@@ -1,1 +1,1 @@
-global ai innovation contest
+# Global Ai Innovation Contest
