@@ -31,6 +31,10 @@ class CSRNet(nn.Module):
         if not load_weights:
             mod = models.vgg16(pretrained=True)
             self._initialize_weights()
+            # frontend_state_dict = self.frontend.state_dict()
+            # mod_state_dict = mod.state_dict()
+            # for i, (key, value) in enumerate(list(frontend_state_dict.items())[1:]):  # 跳过第一层
+            #     frontend_state_dict[key].data[:] = list(mod_state_dict.items())[i][1].data[:]
             for i, (key, value) in enumerate(list(self.frontend.state_dict().items())):
                 self.frontend.state_dict()[key].data[:] = list(
                     mod.state_dict().items())[i][1].data[:]
