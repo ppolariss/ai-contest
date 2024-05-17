@@ -13,8 +13,21 @@ class CSRNet(nn.Module):
 
         # 前端配置，for 2D feature extraction
         # 10个卷积层（VGG16的前10层），3个最大池化层。
-        self.frontend_feat = [64, 64, 'M', 128, 128,
-                              'M', 256, 256, 256, 'M', 512, 512, 512]
+        self.frontend_feat = [
+            64,
+            64,
+            "M",
+            128,
+            128,
+            "M",
+            256,
+            256,
+            256,
+            "M",
+            512,
+            512,
+            512,
+        ]
 
         # 后端配置，to deliver larger reception fields and  replace pooling operations
         # 使用 Dilated convolution （扩展的卷积层）
@@ -22,8 +35,7 @@ class CSRNet(nn.Module):
 
         # 前端和后端
         self.frontend = make_layers(self.frontend_feat)
-        self.backend = make_layers(
-            self.backend_feat, in_channels=512, dilation=True)
+        self.backend = make_layers(self.backend_feat, in_channels=512, dilation=True)
 
         # 输出层
         self.output_layer = nn.Conv2d(64, 1, kernel_size=1)
@@ -37,7 +49,8 @@ class CSRNet(nn.Module):
             #     frontend_state_dict[key].data[:] = list(mod_state_dict.items())[i][1].data[:]
             for i, (key, value) in enumerate(list(self.frontend.state_dict().items())):
                 self.frontend.state_dict()[key].data[:] = list(
-                    mod.state_dict().items())[i][1].data[:]
+                    mod.state_dict().items()
+                )[i][1].data[:]
 
     def forward(self, x):
         x = self.frontend(x)
@@ -70,11 +83,12 @@ def make_layers(cfg, in_channels=3, batch_norm=False, dilation=False):
         d_rate = 1
     layers = []
     for v in cfg:
-        if v == 'M':
+        if v == "M":
             layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
         else:
-            conv2d = nn.Conv2d(in_channels, v, kernel_size=3,
-                               padding=d_rate, dilation=d_rate)
+            conv2d = nn.Conv2d(
+                in_channels, v, kernel_size=3, padding=d_rate, dilation=d_rate
+            )
             if batch_norm:
                 layers += [conv2d, nn.BatchNorm2d(v), nn.ReLU(inplace=True)]
             else:

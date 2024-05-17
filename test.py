@@ -10,8 +10,8 @@ img_paths = [f"{test_path}{i}.jpg" for i in range(1, 1001)]
 
 model = CSRNet()
 model = model.cuda()
-checkpoint = torch.load('./model/model_best.pth.tar')
-model.load_state_dict(checkpoint['state_dict'])
+checkpoint = torch.load("./model/model_best.pth.tar")
+model.load_state_dict(checkpoint["state_dict"])
 
 # for i in range(len(img_paths)):
 #     img = 255.0 * F.to_tensor(Image.open(img_paths[i]).convert('RGB'))
@@ -25,14 +25,15 @@ model.load_state_dict(checkpoint['state_dict'])
 #     ans = "{:.2f}".format(ans.item())
 #     print(f"{i+1},{ans}")
 
-transform = transforms.Compose([
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[
-        0.229, 0.224, 0.225]),
-])
+transform = transforms.Compose(
+    [
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ]
+)
 
 for i in range(len(img_paths)):
-    img = transform((Image.open(img_paths[i]).convert('RGB')))
+    img = transform((Image.open(img_paths[i]).convert("RGB")))
     img = img.cuda()
     img = Variable(img)
     output = model(img.unsqueeze(0))

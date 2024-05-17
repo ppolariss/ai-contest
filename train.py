@@ -15,12 +15,13 @@ from model import CSRNet
 
 
 # 用于保存最佳模型
-def save_checkpoint(state, is_best, task_id, filename='checkpoint.pth.tar', save_dir='./model/'):
+def save_checkpoint(
+    state, is_best, task_id, filename="checkpoint.pth.tar", save_dir="./model/"
+):
     checkpoint_path = os.path.join(save_dir, task_id + filename)
     torch.save(state, checkpoint_path)
     if is_best:
-        best_model_path = os.path.join(
-            save_dir, task_id + 'model_best.pth.tar')
+        best_model_path = os.path.join(save_dir, task_id + "model_best.pth.tar")
         shutil.copyfile(checkpoint_path, best_model_path)
 
 
@@ -33,22 +34,22 @@ def load_data(img_path, tir_img_path, gt_path, train=True):
     """
 
     # 打开图像文件并转换为RGB格式
-    img = Image.open(img_path).convert('RGB')
-    rgb_img = Image.open(img_path).convert('RGB')
+    img = Image.open(img_path).convert("RGB")
+    rgb_img = Image.open(img_path).convert("RGB")
 
     # tir_img = Image.open(tir_img_path).convert('RGB')
     # print(tir_img.size)
-    tir_img = Image.open(tir_img_path).convert('L')
+    tir_img = Image.open(tir_img_path).convert("L")
 
-    # img = cv2.merge((rgb_img[:, :, 0], rgb_img[:, :, 1], rgb_img[:, :, 2], 
+    # img = cv2.merge((rgb_img[:, :, 0], rgb_img[:, :, 1], rgb_img[:, :, 2],
     #                      tir_img[:, :, 0], tir_img[:, :, 1], tir_img[:, :, 2]))
     # # tir_img = Image.open(os.path.join(tir_img_dir, os.path.basename(img_path))).convert('RGB')
-        # 将PIL图像转换为NumPy数组
+    # 将PIL图像转换为NumPy数组
     rgb_img = np.array(rgb_img)
     tir_img = np.array(tir_img)
 
     # 将两个图像合并为一个6通道图像
-        # img = cv2.merge((rgb_img[:, :, 0], rgb_img[:, :, 1], rgb_img[:, :, 2], 
+    # img = cv2.merge((rgb_img[:, :, 0], rgb_img[:, :, 1], rgb_img[:, :, 2],
     #                      tir_img[:, :, 0], tir_img[:, :, 1]))
     # (512, 640, 6) will ValueError: all the input arrays must have same number of dimensions, but the array at index 0 has 3 dimension(s) and the array at index 1 has 4 dimension(s)
     img_np = np.concatenate((rgb_img, np.expand_dims(tir_img, axis=2)), axis=2)
@@ -60,19 +61,35 @@ def load_data(img_path, tir_img_path, gt_path, train=True):
     gt_file = h5py.File(gt_path)
 
     # 从 HDF5 文件中获取名为 'density' 的数据集，并将其转换为 NumPy 数组。
-    target = np.asarray(gt_file['density'])
+    target = np.asarray(gt_file["density"])
 
     # 对密度地图进行缩放操作，将其大小调整为原始大小的1/8，并使用双立方插值法进行插值。
     # https://baike.baidu.com/item/%E5%8F%8C%E4%B8%89%E6%AC%A1%E6%8F%92%E5%80%BC/11055947
-    target = cv2.resize(
-        target, (target.shape[1] // 8, target.shape[0] // 8), interpolation=cv2.INTER_CUBIC) * 64
+    target = (
+        cv2.resize(
+            target,
+            (target.shape[1] // 8, target.shape[0] // 8),
+            interpolation=cv2.INTER_CUBIC,
+        )
+        * 64
+    )
 
     return img, target
 
 
 class ImgDataset(Dataset):
-    def __init__(self, img_dir, tir_img_dir, gt_dir, shape=None, shuffle=True, transform=None, train=False, batch_size=1,
-                 num_workers=4):
+    def __init__(
+        self,
+        img_dir,
+        tir_img_dir,
+        gt_dir,
+        shape=None,
+        shuffle=True,
+        transform=None,
+        train=False,
+        batch_size=1,
+        num_workers=4,
+    ):
         """
         img_dir: 图像文件路径
         gt_dir: h5文件路径
@@ -93,8 +110,11 @@ class ImgDataset(Dataset):
         self.batch_size = batch_size
         self.num_workers = num_workers
 
-        self.img_paths = [os.path.join(img_dir, filename) for filename in os.listdir(
-            img_dir) if filename.endswith('.jpg')]
+        self.img_paths = [
+            os.path.join(img_dir, filename)
+            for filename in os.listdir(img_dir)
+            if filename.endswith(".jpg")
+        ]
         # self.tir_img_paths = [os.path.join(tir_img_dir, filename) for filename in os.listdir(
         #     tir_img_dir) if filename.endswith('.jpg')]
 
@@ -113,15 +133,15 @@ class ImgDataset(Dataset):
         获取图像和标注数据（密度图）
         """
 
-        assert index <= len(self), 'index range error'
+        assert index <= len(self), "index range error"
         img_path = self.img_paths[index]
         img_name = os.path.basename(img_path)
-        gt_path = os.path.join(
-            self.gt_dir, os.path.splitext(img_name)[0] + '.h5')
+        gt_path = os.path.join(self.gt_dir, os.path.splitext(img_name)[0] + ".h5")
         # tir_img_dir = self.tir_img_paths[index]
         # tir_img_name = os.path.basename(tir_img_dir)
         tir_img_path = os.path.join(
-            self.tir_img_dir, os.path.splitext(img_name)[0] + 'R.jpg')
+            self.tir_img_dir, os.path.splitext(img_name)[0] + "R.jpg"
+        )
         img, target = load_data(img_path, tir_img_path, gt_path, self.train)
         if self.transform is not None:
             img = self.transform(img)
@@ -186,14 +206,18 @@ def main():
     # 定义损失函数和优化器
     criterion = nn.MSELoss(size_average=False).cuda()
     # criterion = nn.MSELoss().cuda()
-    optimizer = torch.optim.SGD(model.parameters(), lr, momentum=momentum, weight_decay=decay)
+    optimizer = torch.optim.SGD(
+        model.parameters(), lr, momentum=momentum, weight_decay=decay
+    )
 
     # 数据预处理
     # TODO 此处可设置数据增强
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    ])
+    transform = transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ]
+    )
 
     # 创建数据集实例，并分割为训练集和验证集
     dataset = ImgDataset(img_dir, tir_img_dir, gt_dir, transform=transform, train=True)
@@ -202,20 +226,25 @@ def main():
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
 
     # 创建数据加载器
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=workers)
+    train_loader = DataLoader(
+        train_dataset, batch_size=batch_size, shuffle=True, num_workers=workers
+    )
+    val_loader = DataLoader(
+        val_dataset, batch_size=batch_size, shuffle=False, num_workers=workers
+    )
 
     # 如果指定了预训练模型，则加载预训练参数
     if pre:
         if os.path.isfile(pre):
             print("=> loading checkpoint '{}'".format(pre))
             checkpoint = torch.load(pre)
-            start_epoch = checkpoint['epoch']
-            best_prec1 = checkpoint['best_prec1']
-            model.load_state_dict(checkpoint['state_dict'])
-            optimizer.load_state_dict(checkpoint['optimizer'])
-            print("=> loaded checkpoint '{}' (epoch {})"
-                  .format(pre, checkpoint['epoch']))
+            start_epoch = checkpoint["epoch"]
+            best_prec1 = checkpoint["best_prec1"]
+            model.load_state_dict(checkpoint["state_dict"])
+            optimizer.load_state_dict(checkpoint["optimizer"])
+            print(
+                "=> loaded checkpoint '{}' (epoch {})".format(pre, checkpoint["epoch"])
+            )
         else:
             print("=> no checkpoint found at '{}'".format(pre))
 
@@ -232,17 +261,20 @@ def main():
         # 判断当前模型是否是最佳模型
         is_best = prec1 < best_prec1
         best_prec1 = min(prec1, best_prec1)
-        print(' * best MAE {mae:.3f} '
-              .format(mae=best_prec1))
+        print(" * best MAE {mae:.3f} ".format(mae=best_prec1))
 
         # 保存模型参数
-        save_checkpoint({
-            'epoch': epoch + 1,
-            'arch': pre,
-            'state_dict': model.state_dict(),
-            'best_prec1': best_prec1,
-            'optimizer': optimizer.state_dict(),
-        }, is_best, task)
+        save_checkpoint(
+            {
+                "epoch": epoch + 1,
+                "arch": pre,
+                "state_dict": model.state_dict(),
+                "best_prec1": best_prec1,
+                "optimizer": optimizer.state_dict(),
+            },
+            is_best,
+            task,
+        )
 
 
 def train(model, criterion, optimizer, epoch, train_loader):
@@ -260,8 +292,10 @@ def train(model, criterion, optimizer, epoch, train_loader):
     data_time = AverageMeter()
 
     # 打印当前训练轮次、已处理的样本数量以及学习率
-    print('epoch %d, processed %d samples, lr %.10f' %
-          (epoch, epoch * len(train_loader.dataset), lr))
+    print(
+        "epoch %d, processed %d samples, lr %.10f"
+        % (epoch, epoch * len(train_loader.dataset), lr)
+    )
 
     # 将模型设置为训练模式
     model.train()
@@ -301,13 +335,19 @@ def train(model, criterion, optimizer, epoch, train_loader):
 
         # 如果满足打印频率条件，则打印当前训练轮次、当前处理的批次、总批次数以及损失、批处理时间和数据加载时间的平均值
         if i % print_freq == 0:
-            print('Epoch: [{0}][{1}/{2}]\t'
-                  'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                  'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
-                  'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-            .format(
-                epoch, i, len(train_loader), batch_time=batch_time,
-                data_time=data_time, loss=losses))
+            print(
+                "Epoch: [{0}][{1}/{2}]\t"
+                "Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t"
+                "Data {data_time.val:.3f} ({data_time.avg:.3f})\t"
+                "Loss {loss.val:.4f} ({loss.avg:.4f})\t".format(
+                    epoch,
+                    i,
+                    len(train_loader),
+                    batch_time=batch_time,
+                    data_time=data_time,
+                    loss=losses,
+                )
+            )
 
 
 def validate(model, val_loader):
@@ -315,7 +355,7 @@ def validate(model, val_loader):
     在验证集上评估模型的性能
     """
 
-    print('begin test')
+    print("begin test")
 
     # 将模型设置为评估模式
     model.eval()
@@ -332,14 +372,12 @@ def validate(model, val_loader):
         output = model(img)
 
         # 计算预测值和目标值的绝对值误差，并累加到 MAE 中
-        mae += abs(output.data.sum() -
-                   target.sum().type(torch.FloatTensor).cuda())
+        mae += abs(output.data.sum() - target.sum().type(torch.FloatTensor).cuda())
 
     # 计算平均 MAE
     mae = mae / len(val_loader)
     # 打印平均 MAE
-    print(' * MAE {mae:.3f} '
-          .format(mae=mae))
+    print(" * MAE {mae:.3f} ".format(mae=mae))
 
     return mae
 
@@ -370,7 +408,7 @@ def adjust_learning_rate(optimizer, epoch):
 
     # 更新优化器中每个参数组的学习率
     for param_group in optimizer.param_groups:
-        param_group['lr'] = lr
+        param_group["lr"] = lr
 
 
 class AverageMeter(object):
@@ -403,5 +441,5 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

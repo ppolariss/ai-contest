@@ -18,17 +18,17 @@ def parse_xml(xml_file, image_shape):
     density_map = np.zeros(image_shape, dtype=np.float32)
 
     # 遍历xml文件中的所有 <object>
-    for obj in root.findall('object'):
+    for obj in root.findall("object"):
 
         # 获取目标的坐标
         try:
-            x = int(obj.find('point/x').text)
-            y = int(obj.find('point/y').text)
+            x = int(obj.find("point/x").text)
+            y = int(obj.find("point/y").text)
         except:
-            xmin = int(obj.find('bndbox/xmin').text)
-            ymin = int(obj.find('bndbox/ymin').text)
-            xmax = int(obj.find('bndbox/xmax').text)
-            ymax = int(obj.find('bndbox/ymax').text)
+            xmin = int(obj.find("bndbox/xmin").text)
+            ymin = int(obj.find("bndbox/ymin").text)
+            xmax = int(obj.find("bndbox/xmax").text)
+            ymax = int(obj.find("bndbox/ymax").text)
             x = (xmin + xmax) // 2
             y = (ymin + ymax) // 2
 
@@ -55,5 +55,7 @@ for xml_file in os.listdir(xml_path):
 
         # hdf view
         # https://www.hdfgroup.org/downloads/hdfview/#download
-        with h5py.File(os.path.join(mat_path, xml_file.replace("R.xml", ".h5")), 'w') as hf:
-            hf['density'] = density_map
+        with h5py.File(
+            os.path.join(mat_path, xml_file.replace("R.xml", ".h5")), "w"
+        ) as hf:
+            hf["density"] = density_map
