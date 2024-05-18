@@ -150,7 +150,7 @@ class ImgDataset(Dataset):
 
 
 # 学习率
-lr = 1e-2
+lr = 1e-5
 original_lr = lr
 
 # 批大小

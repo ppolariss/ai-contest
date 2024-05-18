@@ -34,8 +34,8 @@ class CSRNet(nn.Module):
         self.backend_feat = [512, 512, 512, 256, 128, 64]
 
         # 前端和后端
-        self.frontend, channel_1 = make_layers(self.frontend_feat, in_channels=4)
-        self.backend, channel_2 = make_layers(self.backend_feat, in_channels=512, dilation=True)
+        self.frontend = make_layers(self.frontend_feat, in_channels=4)
+        self.backend = make_layers(self.backend_feat, in_channels=512, dilation=True)
 
         # 输出层
         self.output_layer = nn.Conv2d(64, 1, kernel_size=1)
