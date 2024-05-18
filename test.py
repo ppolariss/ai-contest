@@ -10,6 +10,7 @@ img_paths = [f"{test_path}{i}.jpg" for i in range(1, 1001)]
 
 model = CSRNet()
 model = model.cuda()
+# ./best/model_best.pth7.5.tar
 checkpoint = torch.load("./model/model_best.pth.tar")
 model.load_state_dict(checkpoint["state_dict"])
 

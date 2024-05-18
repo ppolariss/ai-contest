@@ -2,3 +2,6 @@
 /__pycache__/
 /model/
 .idea/
+/best/
+/ans/
+/split_test/**

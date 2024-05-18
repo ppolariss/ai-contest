@@ -12,6 +12,8 @@ import h5py
 import cv2
 import shutil
 from model import CSRNet
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+import torch.optim as optim
 
 
 # 用于保存最佳模型
@@ -118,7 +120,7 @@ class ImgDataset(Dataset):
 
 
 # 学习率
-lr = 1e-7
+lr = 1e-5
 original_lr = lr
 
 # 批大小
@@ -133,11 +135,6 @@ decay = 5 * 1e-4
 # 训练轮数
 epochs = 400
 
-# 学习率阶段
-steps = [-1, 1, 100, 150]
-
-# 学习率缩放
-scales = [1, 1, 1, 1]
 
 # 工作线程数
 workers = 4
@@ -180,8 +177,22 @@ def main():
 
     # 定义损失函数和优化器
     criterion = nn.MSELoss(size_average=False).cuda()
-    optimizer = torch.optim.SGD(
-        model.parameters(), lr, momentum=momentum, weight_decay=decay
+    # optimizer = torch.optim.SGD(
+    #     model.parameters(), lr, momentum=momentum, weight_decay=decay
+    # )
+    optimizer = optim.Adam(model.parameters(), lr=lr)
+
+    scheduler = ReduceLROnPlateau(
+        optimizer,
+        mode="min",
+        factor=0.05,
+        patience=2,
+        threshold=0.0001,
+        threshold_mode="rel",
+        cooldown=0,
+        min_lr=0,
+        eps=1e-08,
+        verbose=True,
     )
 
     # 数据预处理
@@ -216,6 +227,7 @@ def main():
             best_prec1 = checkpoint["best_prec1"]
             model.load_state_dict(checkpoint["state_dict"])
             optimizer.load_state_dict(checkpoint["optimizer"])
+            scheduler.load_state_dict(checkpoint["scheduler"])
             print(
                 "=> loaded checkpoint '{}' (epoch {})".format(pre, checkpoint["epoch"])
             )
@@ -225,12 +237,17 @@ def main():
     # 循环训练epochs轮
     for epoch in range(start_epoch, epochs):
         # 调整学习率
-        adjust_learning_rate(optimizer, epoch)
+        # adjust_learning_rate(optimizer, epoch)
 
         # 训练模型
         train(model, criterion, optimizer, epoch, train_loader)
         # 在验证集上评估模型性能
         prec1 = validate(model, val_loader)
+
+        scheduler.step(prec1)
+
+        # scheduler.get_last_lr()[0]
+        # optimizer.param_groups[0]["lr"]
 
         # 判断当前模型是否是最佳模型
         is_best = prec1 < best_prec1
@@ -245,6 +262,7 @@ def main():
                 "state_dict": model.state_dict(),
                 "best_prec1": best_prec1,
                 "optimizer": optimizer.state_dict(),
+                "scheduler": scheduler.state_dict(),
             },
             is_best,
             task,
@@ -356,33 +374,33 @@ def validate(model, val_loader):
     return mae
 
 
-def adjust_learning_rate(optimizer, epoch):
-    """
-    根据当前轮次调整学习率，每隔30个轮次学习率衰减为初始学习率的1/10
-    optimizer: 优化器
-    epoch: 当前轮次
-    """
+# def adjust_learning_rate(optimizer, epoch):
+#     """
+#     根据当前轮次调整学习率，每隔30个轮次学习率衰减为初始学习率的1/10
+#     optimizer: 优化器
+#     epoch: 当前轮次
+#     """
 
-    # 初始学习率
-    lr = original_lr
+#     # 初始学习率
+#     lr = original_lr
 
-    # 遍历学习率更新阶段
-    for i in range(len(steps)):
-        # 如果当前轮次大于等于设定的阶段轮次
-        if epoch >= steps[i]:
-            # 获取当前阶段的学习率缩放比例
-            scale = scales[i] if i < len(scales) else 1
-            # 根据缩放比例更新学习率
-            lr = lr * scale
-            # 如果当前轮次正好等于设定的阶段轮次，结束循环
-            if epoch == steps[i]:
-                break
-        else:
-            break
+#     # 遍历学习率更新阶段
+#     for i in range(len(steps)):
+#         # 如果当前轮次大于等于设定的阶段轮次
+#         if epoch >= steps[i]:
+#             # 获取当前阶段的学习率缩放比例
+#             scale = scales[i] if i < len(scales) else 1
+#             # 根据缩放比例更新学习率
+#             lr = lr * scale
+#             # 如果当前轮次正好等于设定的阶段轮次，结束循环
+#             if epoch == steps[i]:
+#                 break
+#         else:
+#             break
 
-    # 更新优化器中每个参数组的学习率
-    for param_group in optimizer.param_groups:
-        param_group["lr"] = lr
+#     # 更新优化器中每个参数组的学习率
+#     for param_group in optimizer.param_groups:
+#         param_group["lr"] = lr
 
 
 class AverageMeter(object):

@@ -34,7 +34,7 @@ def load_data(img_path, tir_img_path, gt_path, train=True):
     """
 
     # 打开图像文件并转换为RGB格式
-    img = Image.open(img_path).convert("RGB")
+    # img = Image.open(img_path).convert("RGB")
     rgb_img = Image.open(img_path).convert("RGB")
 
     # tir_img = Image.open(tir_img_path).convert('RGB')
@@ -54,8 +54,9 @@ def load_data(img_path, tir_img_path, gt_path, train=True):
     # (512, 640, 6) will ValueError: all the input arrays must have same number of dimensions, but the array at index 0 has 3 dimension(s) and the array at index 1 has 4 dimension(s)
     img_np = np.concatenate((rgb_img, np.expand_dims(tir_img, axis=2)), axis=2)
     print(img_np.shape)
+    print(img_path)
     img = Image.fromarray(img_np)
-    img.show()
+    # img.show()
 
     # 打开 HDF5 文件，该文件包含了密度地图（density map）的标注数据
     gt_file = h5py.File(gt_path)
@@ -171,7 +172,7 @@ scales = [decay_interval] * len(steps)
 
 
 # 工作线程数
-workers = 4
+workers = 1
 
 # 随机种子
 seed = time.time()
@@ -215,7 +216,8 @@ def main():
     transform = transforms.Compose(
         [
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406, 0.456], std=[0.229, 0.224, 0.225, 0.224]),
+            # TODO
         ]
     )
 
@@ -382,6 +384,8 @@ def validate(model, val_loader):
     return mae
 
 
+# ReduceLROnPlateau
+# CosineAnnealingWarmRestarts
 def adjust_learning_rate(optimizer, epoch):
     """
     根据当前轮次调整学习率，每隔30个轮次学习率衰减为初始学习率的1/10
