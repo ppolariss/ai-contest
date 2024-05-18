@@ -11,7 +11,7 @@ from PIL import Image
 import h5py
 import cv2
 import shutil
-from model import CSRNet
+from CSRNet_RGBT.csrnet_rgbt import CSRNet
 
 
 # 用于保存最佳模型
@@ -53,8 +53,8 @@ def load_data(img_path, tir_img_path, gt_path, train=True):
     #                      tir_img[:, :, 0], tir_img[:, :, 1]))
     # (512, 640, 6) will ValueError: all the input arrays must have same number of dimensions, but the array at index 0 has 3 dimension(s) and the array at index 1 has 4 dimension(s)
     img_np = np.concatenate((rgb_img, np.expand_dims(tir_img, axis=2)), axis=2)
-    print(img_np.shape)
-    print(img_path)
+    # print(img_np.shape)
+    # print(img_path)
     img = Image.fromarray(img_np)
     # img.show()
 
@@ -222,7 +222,7 @@ def main():
     )
 
     # 创建数据集实例，并分割为训练集和验证集
-    dataset = ImgDataset(img_dir, tir_img_dir, gt_dir, transform=transform, train=True)
+    dataset = ImgDataset(img_dir, tir_img_dir, gt_dir, shuffle=False,transform=transform, train=True)
     train_size = int(0.8 * len(dataset))
     val_size = len(dataset) - train_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
