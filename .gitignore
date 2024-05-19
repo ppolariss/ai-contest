@@ -7,3 +7,5 @@
 /split_test/**
 /CLIP_EBC/clip/_clip/configs/
 /CLIP_EBC/clip/_clip/weights/
+/combined/
+/downsample_combined/

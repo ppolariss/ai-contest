@@ -2,9 +2,17 @@ import xml.etree.ElementTree as ET
 from PIL import Image
 import os
 import random
-
+import shutil
+from split_utils import (
+    get_tir_path,
+    get_xml_path,
+    rm_dir,
+    get_rgb_paths,
+    get_output_dir,
+)
 
 # 640*512
+output_dir = get_output_dir()
 
 
 def split_image(image_path, tir_path, xml_path):
@@ -23,8 +31,6 @@ def split_image(image_path, tir_path, xml_path):
     image3 = image.crop(box3)
     image4 = image.crop(box4)
 
-    # 保存切分后的图片
-    output_dir = "split_test"
     os.makedirs(output_dir, exist_ok=True)
 
     path_base = os.path.splitext(os.path.basename(image_path))[0]
@@ -135,57 +141,40 @@ def split_image(image_path, tir_path, xml_path):
     tree3.write(os.path.join(output_dir, base_path2 + "annotation3.xml"))
     tree4.write(os.path.join(output_dir, base_path2 + "annotation4.xml"))
 
+    # # 重新拼接图片
+    # new_image = Image.new("RGB", (width, height))
+    # new_image.paste(image1, (0, 0))
+    # new_image.paste(image2, (width // 2, 0))
+    # new_image.paste(image3, (0, height // 2))
+    # new_image.paste(image4, (width // 2, height // 2))
 
-# # 重新拼接图片
-# new_image = Image.new("RGB", (width, height))
-# new_image.paste(image1, (0, 0))
-# new_image.paste(image2, (width // 2, 0))
-# new_image.paste(image3, (0, height // 2))
-# new_image.paste(image4, (width // 2, height // 2))
+    # # 保存拼接后的图片
+    # new_image_path = os.path.join(output_dir, "image.jpg")
+    # new_image.save(new_image_path)
 
-# # 保存拼接后的图片
-# new_image_path = os.path.join(output_dir, "image.jpg")
-# new_image.save(new_image_path)
+    # # 合并XML文件数据
+    # root_combined = ET.Element("annotation")
+    # root_combined.append(size)
+    # root_combined.append(segmented)
 
-# # 合并XML文件数据
-# root_combined = ET.Element("annotation")
-# root_combined.append(size)
-# root_combined.append(segmented)
+    # for r in [root1, root2, root3, root4]:
+    #     for obj in r.findall("object"):
+    #         root_combined.append(obj)
 
-# for r in [root1, root2, root3, root4]:
-#     for obj in r.findall("object"):
-#         root_combined.append(obj)
-
-# tree_combined = ET.ElementTree(root_combined)
-# combined_xml_path = os.path.join(output_dir, "combined_annotation.xml")
-# tree_combined.write(combined_xml_path)
+    # tree_combined = ET.ElementTree(root_combined)
+    # combined_xml_path = os.path.join(output_dir, "combined_annotation.xml")
+    # tree_combined.write(combined_xml_path)
 
 
 if __name__ == "__main__":
-    # image_path = "dataset/train/rgb/1.jpg"
-    # xml_path = "dataset/train/labels/1R.xml"
-    # split_image(image_path, xml_path)
-    img_dir = "./dataset/train/rgb/"
-    gt_dir = "./dataset/train/labels/"
-    tir_dir = "./dataset/train/tir/"
-    img_paths = [
-        os.path.join(img_dir, filename)
-        for filename in os.listdir(img_dir)
-        if filename.endswith(".jpg")
-    ]
-    # print(img_paths)
+    rm_dir(output_dir)
+    img_paths = get_rgb_paths()
 
     for index in range(len(img_paths)):
         image_path = img_paths[index]
-        xml_path = os.path.join(
-            gt_dir, os.path.splitext(os.path.basename(image_path))[0] + "R.xml"
-        )
-        # split_image(image_path, xml_path)
-        # print(image_path, xml_path)
-        tir_path = os.path.join(
-            tir_dir, os.path.splitext(os.path.basename(image_path))[0] + "R.jpg"
-        )
-        # print(image_path, tir_path, xml_path)
+        xml_path = get_xml_path(image_path)
+        tir_path = get_tir_path(image_path)
+        print(image_path, tir_path, xml_path)
         split_image(image_path, tir_path, xml_path)
         break
     # random.shuffle(img_paths)
