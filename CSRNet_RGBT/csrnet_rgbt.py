@@ -6,9 +6,9 @@ from torchvision import models
 # https://arxiv.org/abs/1802.10062
 
 
-class CSRNet(nn.Module):
+class CSRNet_RGBT(nn.Module):
     def __init__(self, load_weights=False):
-        super(CSRNet, self).__init__()
+        super(CSRNet_RGBT, self).__init__()
         self.seen = 0
 
         # 前端配置，for 2D feature extraction
