@@ -5,7 +5,7 @@ import expansion.split as split
 import expansion.combine as combine
 import os
 import shutil
-
+import label
 
 if __name__ == "__main__":
     flip, downsample, combined = True, True, True
@@ -54,3 +54,5 @@ if __name__ == "__main__":
             output_labels_dir,
         ).combine()
         print("Combining done")
+
+    label.label(output_labels_dir, output_labels_dir.replace("labels", "hdf5s"))

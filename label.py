@@ -42,20 +42,24 @@ def parse_xml(xml_file, image_shape):
     return density_map
 
 
-xml_path = "./dataset/train/labels/"
-mat_path = "./dataset/train/hdf5s/"
+def label(xml_path, mat_path):
+    # 宽640，高512
+    image_shape = (512, 640)  # Assuming the image shape is fixed
 
-# 宽640，高512
-image_shape = (512, 640)  # Assuming the image shape is fixed
+    for xml_file in os.listdir(xml_path):
+        if xml_file.endswith(".xml"):
+            print(xml_file)
+            density_map = parse_xml(os.path.join(xml_path, xml_file), image_shape)
 
-for xml_file in os.listdir(xml_path):
-    if xml_file.endswith(".xml"):
-        print(xml_file)
-        density_map = parse_xml(os.path.join(xml_path, xml_file), image_shape)
+            # hdf view
+            # https://www.hdfgroup.org/downloads/hdfview/#download
+            with h5py.File(
+                os.path.join(mat_path, xml_file.replace("R.xml", ".h5")), "w"
+            ) as hf:
+                hf["density"] = density_map
 
-        # hdf view
-        # https://www.hdfgroup.org/downloads/hdfview/#download
-        with h5py.File(
-            os.path.join(mat_path, xml_file.replace("R.xml", ".h5")), "w"
-        ) as hf:
-            hf["density"] = density_map
+
+if __name__ == "__main__":
+    xml_path = "./dataset/train/labels/"
+    mat_path = "./dataset/train/hdf5s/"
+    label(xml_path, mat_path)
