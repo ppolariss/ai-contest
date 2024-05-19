@@ -1,5 +1,6 @@
 import os
 import shutil
+import random
 
 default_xml_dir = "./dataset/train/labels/"
 default_tir_dir = "./dataset/train/tir/"
@@ -16,6 +17,7 @@ def get_rgb_paths(rgb_dir=default_rgb_dir) -> list[str]:
         for filename in os.listdir(rgb_dir)
         if filename.endswith(".jpg")
     ]
+    # return random.shuffle(img_paths)
     return img_paths
 
 

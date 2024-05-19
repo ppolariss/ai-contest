@@ -14,7 +14,7 @@ import cv2
 import shutil
 from CSRNet_RGBT.csrnet_rgbt import CSRNet_RGBT
 from Res50.model.Res50 import Res50
-from CLIP_EBC import get_model
+# from CLIP_EBC import get_model
 
 
 # 用于保存最佳模型

@@ -124,6 +124,7 @@ lr = 1e-5
 original_lr = lr
 
 # 批大小
+# batch_size = 8
 batch_size = 1
 
 # 动量
@@ -148,6 +149,8 @@ print_freq = 30
 # 图像路径
 img_dir = "./dataset/train/rgb/"
 gt_dir = "./dataset/train/hdf5s/"
+# img_dir = "./expansion_dataset/rgb/"
+# gt_dir = "./expansion_dataset/hdf5s/"
 
 # 预训练模型
 pre = None
