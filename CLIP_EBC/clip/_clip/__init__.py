@@ -59,8 +59,8 @@ def _clip(name: str, input_size: Optional[Union[int, Tuple[int, int]]] = None) -
         transformer_heads=config["transformer_heads"],
         transformer_layers=config["transformer_layers"]
     )
-    state_dict = torch.load(os.path.join(curr_dir, "weights", f"clip_{name}.pth"), map_location="cpu")
-    model.load_state_dict(state_dict, strict=True)
+    # state_dict = torch.load(os.path.join(curr_dir, "weights", f"clip_{name}.pth"), map_location="cpu")
+    # model.load_state_dict(state_dict, strict=True)
 
     if input_size is not None:
         input_size = (input_size, input_size) if isinstance(input_size, int) else input_size
@@ -89,13 +89,13 @@ def _resnet(
         out_indices=out_indices,
         reduction=reduction
     )
-    state_dict = torch.load(os.path.join(curr_dir, "weights", f"clip_image_encoder_{name}.pth"), map_location="cpu")
-    missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)
-    if len(missing_keys) > 0 or len(unexpected_keys) > 0:
-        print(f"Missing keys: {missing_keys}")
-        print(f"Unexpected keys: {unexpected_keys}")
-    else:
-        print(f"All keys matched successfully.")
+    # state_dict = torch.load(os.path.join(curr_dir, "weights", f"clip_image_encoder_{name}.pth"), map_location="cpu")
+    # missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)
+    # if len(missing_keys) > 0 or len(unexpected_keys) > 0:
+    #     print(f"Missing keys: {missing_keys}")
+    #     print(f"Unexpected keys: {unexpected_keys}")
+    # else:
+    #     print(f"All keys matched successfully.")
 
     return model
 
@@ -112,13 +112,13 @@ def _vit(name: str, features_only: bool = False, input_size: Optional[Union[int,
         heads=config["vision_heads"],
         features_only=features_only
     )
-    state_dict = torch.load(os.path.join(curr_dir, "weights", f"clip_image_encoder_{name}.pth"), map_location="cpu")
-    missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)
-    if len(missing_keys) > 0 or len(unexpected_keys) > 0:
-        print(f"Missing keys: {missing_keys}")
-        print(f"Unexpected keys: {unexpected_keys}")
-    else:
-        print(f"All keys matched successfully.")
+    # state_dict = torch.load(os.path.join(curr_dir, "weights", f"clip_image_encoder_{name}.pth"), map_location="cpu")
+    # missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)
+    # if len(missing_keys) > 0 or len(unexpected_keys) > 0:
+    #     print(f"Missing keys: {missing_keys}")
+    #     print(f"Unexpected keys: {unexpected_keys}")
+    # else:
+    #     print(f"All keys matched successfully.")
 
     if input_size is not None:
         input_size = (input_size, input_size) if isinstance(input_size, int) else input_size
@@ -137,13 +137,13 @@ def _text_encoder(name: str) -> CLIPTextEncoder:
         transformer_heads=config["transformer_heads"],
         transformer_layers=config["transformer_layers"]
     )
-    state_dict = torch.load(os.path.join(curr_dir, "weights", f"clip_text_encoder_{name}.pth"), map_location="cpu")
-    missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)
-    if len(missing_keys) > 0 or len(unexpected_keys) > 0:
-        print(f"Missing keys: {missing_keys}")
-        print(f"Unexpected keys: {unexpected_keys}")
-    else:
-        print(f"All keys matched successfully.")
+    # state_dict = torch.load(os.path.join(curr_dir, "weights", f"clip_text_encoder_{name}.pth"), map_location="cpu")
+    # missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)
+    # if len(missing_keys) > 0 or len(unexpected_keys) > 0:
+    #     print(f"Missing keys: {missing_keys}")
+    #     print(f"Unexpected keys: {unexpected_keys}")
+    # else:
+    #     print(f"All keys matched successfully.")
 
     return model
 

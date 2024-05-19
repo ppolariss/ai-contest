@@ -33,7 +33,7 @@ class ModifiedResNet(nn.Module):
         self.downsampling_rate = 32  # the rate at which the input is downsampled by the network
 
         # the 3-layer stem
-        self.conv1 = nn.Conv2d(3, width // 2, kernel_size=3, stride=2, padding=1, bias=False)
+        self.conv1 = nn.Conv2d(4, width // 2, kernel_size=3, stride=2, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(width // 2)
         self.relu1 = nn.ReLU(inplace=True)
         self.conv2 = nn.Conv2d(width // 2, width // 2, kernel_size=3, padding=1, bias=False)

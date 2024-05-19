@@ -11,7 +11,6 @@ import pdb
 
 
 # from https://github.com/gjy3035/C-3-Framework/tree/python3.x
-# model_path = '../PyTorch_Pretrained/resnet50-19c8e357.pth'
 
 class Res50(nn.Module):
     def __init__(self, pretrained=True):
@@ -24,8 +23,9 @@ class Res50(nn.Module):
 
         res = models.resnet50(pretrained=pretrained)
 
+        conv1 = nn.Conv2d(4, 64, kernel_size=7, stride=2, padding=3, bias=False)
         self.frontend = nn.Sequential(
-            res.conv1, res.bn1, res.relu, res.maxpool, res.layer1, res.layer2
+            conv1, res.bn1, res.relu, res.maxpool, res.layer1, res.layer2
         )
         self.own_reslayer_3 = make_res_layer(Bottleneck, 256, 6, stride=1)
         self.own_reslayer_3.load_state_dict(res.layer3.state_dict())

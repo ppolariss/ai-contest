@@ -116,7 +116,7 @@ class VanillaCLIP(nn.Module):
         exp = (probs * self.anchor_points.to(x.device)).sum(dim=1, keepdim=True)  # (B, 1, H, W)
 
         if self.training:
-            return logits, exp
+            return exp
         else:
             return exp
 
