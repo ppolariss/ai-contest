@@ -126,7 +126,7 @@ def flip(output_rgb_dir, output_tir_dir, output_labels_dir):
         base_path = os.path.splitext(os.path.basename(rgb_path))[0]
         output_image_path = output_rgb_dir + "/" + base_path + "flipped.jpg"
         output_tir_image_path = output_tir_dir + "/" + base_path + "flippedR.jpg"
-        output_xml_path = output_labels_dir + "/" + base_path + "flipped.xml"
+        output_xml_path = output_labels_dir + "/" + base_path + "flippedR.xml"
         process_image_and_xml(
             rgb_path,
             tir_path,

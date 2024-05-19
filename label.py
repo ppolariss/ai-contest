@@ -48,7 +48,7 @@ def label(xml_path, mat_path):
 
     for xml_file in os.listdir(xml_path):
         if xml_file.endswith(".xml"):
-            print(xml_file)
+            # print(xml_file)
             density_map = parse_xml(os.path.join(xml_path, xml_file), image_shape)
 
             # hdf view
