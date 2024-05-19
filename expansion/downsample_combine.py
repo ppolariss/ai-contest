@@ -37,24 +37,7 @@ from PIL import Image
 import numpy as np
 import xml.etree.ElementTree as ET
 import os
-import split_utils
-
-
-output_tir_image_path = "downsample_combined/combined_tir_image.jpg"
-output_image_path = "downsample_combined/combined_image.jpg"
-output_xml_path = "downsample_combined/combined_image.xml"
-
-os.makedirs("downsample_combined", exist_ok=True)
-
-image_paths = [
-    "dataset/train/rgb/1.jpg",
-    "dataset/train/rgb/2.jpg",
-    "dataset/train/rgb/3.jpg",
-    "dataset/train/rgb/4.jpg",
-]
-
-
-xml_paths = split_utils.get_xml_paths(image_paths)
+import expansion.split_utils as split_utils
 
 
 def downsample_image(image):
@@ -88,7 +71,9 @@ def combine_images(images):
     return combined_image
 
 
-def update_xml(xml_paths):
+def update_xml(xml_paths, size, output_xml_path):
+    width, height = size
+    # print(width, height)
     """
     Update the XML annotation files according to the new combined image.
     """
@@ -96,7 +81,7 @@ def update_xml(xml_paths):
         raise ValueError("Exactly four XML paths are required.")
 
     new_annotations = []
-    width, height = Image.open(image_paths[0]).size
+
     width //= 2
     height //= 2
 
@@ -106,23 +91,49 @@ def update_xml(xml_paths):
 
         for obj in root.findall("object"):
             point = obj.find("point")
-            x = int(point.find("x").text)
-            y = int(point.find("y").text)
+            if point is not None:
+                x = int(point.find("x").text)
+                y = int(point.find("y").text)
 
-            # Downsample the coordinates
-            new_x = x // 2
-            new_y = y // 2
+                # Downsample the coordinates
+                new_x = x // 2
+                new_y = y // 2
 
-            # Adjust coordinates based on the image's position in the combined image
-            if idx == 1:
-                new_x += width
-            elif idx == 2:
-                new_y += height
-            elif idx == 3:
-                new_x += width
-                new_y += height
+                # Adjust coordinates based on the image's position in the combined image
+                if idx == 1:
+                    new_x += width
+                elif idx == 2:
+                    new_y += height
+                elif idx == 3:
+                    new_x += width
+                    new_y += height
 
-            new_annotations.append((obj.find("name").text, new_x, new_y))
+                new_annotations.append((obj.find("name").text, new_x, new_y))
+            else:
+                bnd = obj.find("bndbox")
+                minx = int(bnd.find("xmin").text)
+                miny = int(bnd.find("ymin").text)
+                # maxx = int(bnd.find("xmax").text)
+                # maxy = int(bnd.find("ymax").text)
+
+                new_minx = minx // 2
+                new_miny = miny // 2
+                # new_maxx = maxx // 2
+                # new_maxy = maxy // 2
+
+                if idx == 1:
+                    new_minx += width
+                    # new_maxx += width
+                elif idx == 2:
+                    new_miny += height
+                    # new_maxy += height
+                elif idx == 3:
+                    new_minx += width
+                    # new_maxx += width
+                    new_miny += height
+                    # new_maxy += height
+
+                new_annotations.append((obj.find("name").text, new_minx, new_miny))
 
     # Create a new XML tree for the combined image
     root = ET.Element("annotation")
@@ -146,32 +157,52 @@ def update_xml(xml_paths):
     tree.write(output_xml_path)
 
 
-def process_images_and_annotations():
-    """
-    Downsample images, combine them, and update the XML annotations.
-    """
-    if len(image_paths) != 4 or len(xml_paths) != 4:
-        raise ValueError("Exactly four images and four XML paths are required.")
+def downsample_combine(output_rgb_dir, output_tir_dir, output_labels_dir):
+    os.makedirs("downsample_combined", exist_ok=True)
 
-    downsampled_images = [
-        downsample_image(Image.open(image_path)) for image_path in image_paths
-    ]
-    combined_image = combine_images(downsampled_images)
-    combined_image.save(output_image_path)
+    rgb_image_paths = split_utils.get_rgb_paths()
 
-    tir_paths = split_utils.get_tir_paths(image_paths)
-    downsampled_tir_images = [
-        downsample_image(Image.open(tir_path)) for tir_path in tir_paths
-    ]
-    combined_tir_image = combine_images(downsampled_tir_images)
-    combined_tir_image.save(output_tir_image_path)
+    length = len(rgb_image_paths) // 4
 
-    print(image_paths, xml_paths, tir_paths)
-    update_xml(xml_paths)
+    for idx in range(length):
+        output_tir_image_path = f"{output_tir_dir}/downsample{idx}R.jpg"
+        output_image_path = f"{output_rgb_dir}/downsample{idx}.jpg"
+        output_xml_path = f"{output_labels_dir}/downsample{idx}R.xml"
+
+        image_paths = [
+            rgb_image_paths[idx],
+            rgb_image_paths[idx + length],
+            rgb_image_paths[idx + 2 * length],
+            rgb_image_paths[idx + 3 * length],
+        ]
+        xml_paths = split_utils.get_xml_paths(image_paths)
+
+        """
+        Downsample images, combine them, and update the XML annotations.
+        """
+        # if len(image_paths) != 4 or len(xml_paths) != 4:
+        #     raise ValueError("Exactly four images and four XML paths are required.")
+
+        downsampled_images = [
+            downsample_image(Image.open(image_path)) for image_path in image_paths
+        ]
+        combined_image = combine_images(downsampled_images)
+        combined_image.save(output_image_path)
+
+        tir_paths = split_utils.get_tir_paths(image_paths)
+        downsampled_tir_images = [
+            downsample_image(Image.open(tir_path)) for tir_path in tir_paths
+        ]
+        combined_tir_image = combine_images(downsampled_tir_images)
+        combined_tir_image.save(output_tir_image_path)
+
+        # print(image_paths, xml_paths, tir_paths)
+        update_xml(xml_paths, combined_tir_image.size, output_xml_path)
+        # break
 
 
 if __name__ == "__main__":
-    process_images_and_annotations()
+    exit()
 
 # # print(result_image.size)
 # # Save the result

@@ -338,6 +338,8 @@ def train(model, criterion, optimizer, epoch, train_loader):
         batch_time.update(time.time() - end)
         end = time.time()
 
+        torch.cuda.empty_cache()
+
         # 如果满足打印频率条件，则打印当前训练轮次、当前处理的批次、总批次数以及损失、批处理时间和数据加载时间的平均值
         if i % print_freq == 0:
             print(

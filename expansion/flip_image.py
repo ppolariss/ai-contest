@@ -1,7 +1,7 @@
 import os
 import xml.etree.ElementTree as ET
 from PIL import Image
-import split_utils
+import expansion.split_utils as split_utils
 
 
 def flip_image(image_path, flip_horizontal=True, flip_vertical=True):
@@ -44,16 +44,36 @@ def update_xml_for_flipped_image(
 
     for obj in root.findall("object"):
         point = obj.find("point")
-        x = int(point.find("x").text)
-        y = int(point.find("y").text)
+        if point is None:
+            point = obj.find("bndbox")
+            x = int(point.find("xmin").text)
+            y = int(point.find("ymin").text)
+            if flip_horizontal:
+                x = width - x
+            if flip_vertical:
+                y = height - y
+            point.find("xmin").text = str(x)
+            point.find("ymin").text = str(y)
 
-        if flip_horizontal:
-            x = width - x
-        if flip_vertical:
-            y = height - y
+            x = int(point.find("xmax").text)
+            y = int(point.find("ymax").text)
+            if flip_horizontal:
+                x = width - x
+            if flip_vertical:
+                y = height - y
+            point.find("xmax").text = str(x)
+            point.find("ymax").text = str(y)
+        else:
+            x = int(point.find("x").text)
+            y = int(point.find("y").text)
 
-        point.find("x").text = str(x)
-        point.find("y").text = str(y)
+            if flip_horizontal:
+                x = width - x
+            if flip_vertical:
+                y = height - y
+
+            point.find("x").text = str(x)
+            point.find("y").text = str(y)
 
     tree.write(output_xml_path)
 
@@ -97,20 +117,16 @@ def process_image_and_xml(
     )
 
 
-if __name__ == "__main__":
-    output_dir = "expansion_dataset"
-    os.makedirs(output_dir, exist_ok=True)
-    split_utils.rm_dir(output_dir)
-
+def flip(output_rgb_dir, output_tir_dir, output_labels_dir):
     image_paths = split_utils.get_rgb_paths()
     for idx in range(len(image_paths)):
         rgb_path = image_paths[idx]
         tir_path = split_utils.get_tir_path(rgb_path)
         xml_path = split_utils.get_xml_path(rgb_path)
         base_path = os.path.splitext(os.path.basename(rgb_path))[0]
-        output_image_path = output_dir + "/" + base_path + "flipped.jpg"
-        output_xml_path = output_dir + "/" + base_path + "flipped.xml"
-        output_tir_image_path = output_dir + "/" + base_path + "flippedR.jpg"
+        output_image_path = output_rgb_dir + "/" + base_path + "flipped.jpg"
+        output_tir_image_path = output_tir_dir + "/" + base_path + "flippedR.jpg"
+        output_xml_path = output_labels_dir + "/" + base_path + "flipped.xml"
         process_image_and_xml(
             rgb_path,
             tir_path,
@@ -121,4 +137,7 @@ if __name__ == "__main__":
             flip_horizontal=idx % 3 != 2,
             flip_vertical=idx % 3 != 1,
         )
-        break
+
+
+if __name__ == "__main__":
+    flip()

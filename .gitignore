@@ -1,12 +1,13 @@
 /dataset/
-/__pycache__/
+/**/__pycache__/
 /model/
 .idea/
 /best/
 /ans/
-/split_test/**
+/split_test/
 /CLIP_EBC/clip/_clip/configs/
 /CLIP_EBC/clip/_clip/weights/
 /combined/
 /downsample_combined/
 /expansion_dataset/**
+/split_temp/**
