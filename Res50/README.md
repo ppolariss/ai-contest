@@ -1,2 +1,9 @@
 * 纯resnet-50，用于人群计数
-* 对应 `train_resnet50.py` 文件
+
+```python
+from Res50.model.Res50 import Res50
+...
+
+# 创建模型实例，并将其移动到GPU上
+model = Res50()
+```
