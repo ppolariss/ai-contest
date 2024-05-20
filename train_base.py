@@ -245,7 +245,7 @@ def main():
         # adjust_learning_rate(optimizer, epoch)
 
         # 训练模型
-        train(model, criterion, optimizer, epoch, train_loader)
+        train(model, criterion, optimizer, epoch, train_loader, optimizer.param_groups[0]["lr"])
         # 在验证集上评估模型性能
         prec1 = validate(model, val_loader)
 
@@ -340,7 +340,7 @@ def split_and_merge(input_tensor, target_tensor):
     )
 
 
-def train(model, criterion, optimizer, epoch, train_loader):
+def train(model, criterion, optimizer, epoch, train_loader, curr_lr):
     """
     model: 训练的模型
     criterion: 损失函数
@@ -357,7 +357,7 @@ def train(model, criterion, optimizer, epoch, train_loader):
     # 打印当前训练轮次、已处理的样本数量以及学习率
     print(
         "epoch %d, processed %d samples, lr %.10f"
-        % (epoch, epoch * len(train_loader.dataset), lr)
+        % (epoch, epoch * len(train_loader.dataset), curr_lr)
     )
 
     # 将模型设置为训练模式
