@@ -225,7 +225,7 @@ def main():
     scheduler = ReduceLROnPlateau(
         optimizer,
         mode="min",
-        # factor=0.05,
+        # factor=0.2,
         factor=0.5,
         patience=5,
         threshold=0.0001,
@@ -242,7 +242,7 @@ def main():
         [
             transforms.ToTensor(),
             transforms.Normalize(
-                mean=[0.485, 0.456, 0.406, 0.456], std=[0.229, 0.224, 0.225, 0.224]
+                mean=[0.485, 0.456, 0.406, 0.397], std=[0.229, 0.224, 0.225, 0.181]
             ),
             # TODO
         ]
