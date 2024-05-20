@@ -13,6 +13,7 @@ import h5py
 import cv2
 import shutil
 from CSRNet_RGBT.csrnet_rgbt import CSRNet_RGBT
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from Res50.model.Res50 import Res50
 # from CLIP_EBC import get_model
 
@@ -157,7 +158,7 @@ lr = 1e-5
 original_lr = lr
 
 # 批大小
-batch_size = 1
+batch_size = 4
 
 # 动量
 momentum = 0.95
@@ -175,7 +176,7 @@ scales = [decay_interval] * len(steps)
 
 
 # 工作线程数
-workers = 1
+workers = 4
 
 # 随机种子
 seed = time.time()
@@ -214,6 +215,19 @@ def main():
         model.parameters(), lr, momentum=momentum, weight_decay=decay
     )
 
+    scheduler = ReduceLROnPlateau(
+        optimizer,
+        mode="min",
+        factor=0.05,
+        patience=2,
+        threshold=0.0001,
+        threshold_mode="rel",
+        cooldown=0,
+        min_lr=0,
+        eps=1e-08,
+        verbose=True,
+    )
+
     # 数据预处理
     # TODO 此处可设置数据增强
     transform = transforms.Compose(
@@ -247,6 +261,7 @@ def main():
             best_prec1 = checkpoint["best_prec1"]
             model.load_state_dict(checkpoint["state_dict"])
             optimizer.load_state_dict(checkpoint["optimizer"])
+            scheduler.load_state_dict(checkpoint["scheduler"])
             print(
                 "=> loaded checkpoint '{}' (epoch {})".format(pre, checkpoint["epoch"])
             )
@@ -263,6 +278,8 @@ def main():
         # 在验证集上评估模型性能
         prec1 = validate(model, val_loader)
 
+        scheduler.step(prec1)
+
         # 判断当前模型是否是最佳模型
         is_best = prec1 < best_prec1
         best_prec1 = min(prec1, best_prec1)
@@ -276,6 +293,7 @@ def main():
                 "state_dict": model.state_dict(),
                 "best_prec1": best_prec1,
                 "optimizer": optimizer.state_dict(),
+                "scheduler": scheduler.state_dict(),
             },
             is_best,
             task,
@@ -310,6 +328,7 @@ def train(model, criterion, optimizer, epoch, train_loader):
     for i, (img, target) in enumerate(train_loader):
         # 记录数据加载所需的时间
         data_time.update(time.time() - end)
+
 
         # 将输入图像移动到 GPU 上
         img = img.cuda()
@@ -379,10 +398,10 @@ def validate(model, val_loader):
         output = model(img)
 
         # 计算预测值和目标值的绝对值误差，并累加到 MAE 中
-        mae += abs(output.data.sum() - target.sum().type(torch.FloatTensor).cuda())
+        mae += abs(output.data.sum() - target.sum().type(torch.FloatTensor).cuda()) 
 
     # 计算平均 MAE
-    mae = mae / len(val_loader)
+    mae = mae / (len(val_loader) * batch_size)
     # 打印平均 MAE
     print(" * MAE {mae:.3f} ".format(mae=mae))
 
