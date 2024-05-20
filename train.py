@@ -15,6 +15,7 @@ import shutil
 from CSRNet_RGBT.csrnet_rgbt import CSRNet_RGBT
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from Res50.model.Res50 import Res50
+
 # from CLIP_EBC import get_model
 
 
@@ -169,10 +170,10 @@ decay = 5 * 1e-4
 # 训练轮数
 epochs = 400
 
-decay_interval = 30
-steps = [i * decay_interval for i in range(1, epochs // decay_interval + 1)]
-# 每次衰减的系数为 0.1（即学习率降低 10 倍）
-scales = [decay_interval] * len(steps)
+# decay_interval = 30
+# steps = [i * decay_interval for i in range(1, epochs // decay_interval + 1)]
+# # 每次衰减的系数为 0.1（即学习率降低 10 倍）
+# scales = [decay_interval] * len(steps)
 
 
 # 工作线程数
@@ -214,6 +215,7 @@ def main():
     optimizer = torch.optim.SGD(
         model.parameters(), lr, momentum=momentum, weight_decay=decay
     )
+    # optimizer = optim.Adam(model.parameters(), lr=lr)
 
     scheduler = ReduceLROnPlateau(
         optimizer,
@@ -233,13 +235,17 @@ def main():
     transform = transforms.Compose(
         [
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406, 0.456], std=[0.229, 0.224, 0.225, 0.224]),
+            transforms.Normalize(
+                mean=[0.485, 0.456, 0.406, 0.456], std=[0.229, 0.224, 0.225, 0.224]
+            ),
             # TODO
         ]
     )
 
     # 创建数据集实例，并分割为训练集和验证集
-    dataset = ImgDataset(img_dir, tir_img_dir, gt_dir, shuffle=False,transform=transform, train=True)
+    dataset = ImgDataset(
+        img_dir, tir_img_dir, gt_dir, shuffle=False, transform=transform, train=True
+    )
     train_size = int(0.8 * len(dataset))
     val_size = len(dataset) - train_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
@@ -271,10 +277,17 @@ def main():
     # 循环训练epochs轮
     for epoch in range(start_epoch, epochs):
         # 调整学习率
-        adjust_learning_rate(optimizer, epoch)
+        # adjust_learning_rate(optimizer, epoch)
 
         # 训练模型
-        train(model, criterion, optimizer, epoch, train_loader)
+        train(
+            model,
+            criterion,
+            optimizer,
+            epoch,
+            train_loader,
+            optimizer.param_groups[0]["lr"],
+        )
         # 在验证集上评估模型性能
         prec1 = validate(model, val_loader)
 
@@ -300,7 +313,73 @@ def main():
         )
 
 
-def train(model, criterion, optimizer, epoch, train_loader):
+def data_augmentation(img, target):
+    input_tensor, target_tensor = random_flip(img, target)
+    return split_and_merge(input_tensor, target_tensor)
+
+
+def random_flip(input_tensor, target_tensor):
+    for i in range(input_tensor.size(0)):
+        if random.random() > 0.5:
+            input_tensor[i] = torch.flip(input_tensor[i], dims=[2])
+            target_tensor[i] = torch.flip(target_tensor[i], dims=[1])
+        if random.random() > 0.5:
+            input_tensor[i] = torch.flip(input_tensor[i], dims=[1])
+            target_tensor[i] = torch.flip(target_tensor[i], dims=[0])
+    return input_tensor, target_tensor
+
+
+def split_and_merge(input_tensor, target_tensor):
+    batch_size, channels, height, width = input_tensor.size()
+
+    input_top_left = input_tensor[:, :, : height // 2, : width // 2]
+    input_top_right = input_tensor[:, :, : height // 2, width // 2 :]
+    input_bottom_left = input_tensor[:, :, height // 2 :, : width // 2]
+    input_bottom_right = input_tensor[:, :, height // 2 :, width // 2 :]
+
+    target_top_left = target_tensor[:, : height // 2, : width // 2]
+    target_top_right = target_tensor[:, : height // 2, width // 2 :]
+    target_bottom_left = target_tensor[:, height // 2 :, : width // 2]
+    target_bottom_right = target_tensor[:, height // 2 :, width // 2 :]
+
+    new_images = []
+    new_targets = []
+    for i in range(batch_size):
+        idx1 = i
+        idx2 = (i + 1) % batch_size
+        idx3 = (i + 2) % batch_size
+        idx4 = (i + 3) % batch_size
+        new_image1_top = torch.cat(
+            (input_top_left[idx1], input_top_right[idx2]), dim=-1
+        )
+        new_image1_bottom = torch.cat(
+            (input_bottom_left[idx3], input_bottom_right[idx4]), dim=-1
+        )
+        new_image1 = torch.cat((new_image1_top, new_image1_bottom), dim=-2)
+        # print(new_image1.shape)
+        # print(new_image1)
+
+        new_images.append(new_image1)
+
+        new_target_top = torch.cat(
+            (target_top_left[idx1], target_top_right[idx2]), dim=-1
+        )
+        new_target_bottom = torch.cat(
+            (target_bottom_left[idx3], target_bottom_right[idx4]), dim=-1
+        )
+        new_target = torch.cat((new_target_top, new_target_bottom), dim=-2)
+
+        new_targets.append(new_target)
+
+    new_images_tensor = torch.stack(new_images)
+    new_targets_tensor = torch.stack(new_targets)
+
+    return torch.cat((input_tensor, new_images_tensor), dim=0), torch.cat(
+        (target_tensor, new_targets_tensor), dim=0
+    )
+
+
+def train(model, criterion, optimizer, epoch, train_loader, curr_lr):
     """
     model: 训练的模型
     criterion: 损失函数
@@ -317,7 +396,7 @@ def train(model, criterion, optimizer, epoch, train_loader):
     # 打印当前训练轮次、已处理的样本数量以及学习率
     print(
         "epoch %d, processed %d samples, lr %.10f"
-        % (epoch, epoch * len(train_loader.dataset), lr)
+        % (epoch, epoch * len(train_loader.dataset), curr_lr)
     )
 
     # 将模型设置为训练模式
@@ -326,9 +405,12 @@ def train(model, criterion, optimizer, epoch, train_loader):
 
     # 迭代训练数据加载器中的每个批次
     for i, (img, target) in enumerate(train_loader):
+        if batch_size == 4:
+            img, target = data_augmentation(img, target)
+        else:
+            img, target = random_flip(img, target)
         # 记录数据加载所需的时间
         data_time.update(time.time() - end)
-
 
         # 将输入图像移动到 GPU 上
         img = img.cuda()
@@ -398,7 +480,7 @@ def validate(model, val_loader):
         output = model(img)
 
         # 计算预测值和目标值的绝对值误差，并累加到 MAE 中
-        mae += abs(output.data.sum() - target.sum().type(torch.FloatTensor).cuda()) 
+        mae += abs(output.data.sum() - target.sum().type(torch.FloatTensor).cuda())
 
     # 计算平均 MAE
     mae = mae / (len(val_loader) * batch_size)
@@ -410,33 +492,34 @@ def validate(model, val_loader):
 
 # ReduceLROnPlateau
 # CosineAnnealingWarmRestarts
-def adjust_learning_rate(optimizer, epoch):
-    """
-    根据当前轮次调整学习率，每隔30个轮次学习率衰减为初始学习率的1/10
-    optimizer: 优化器
-    epoch: 当前轮次
-    """
 
-    # 初始学习率
-    lr = original_lr
+# def adjust_learning_rate(optimizer, epoch):
+#     """
+#     根据当前轮次调整学习率，每隔30个轮次学习率衰减为初始学习率的1/10
+#     optimizer: 优化器
+#     epoch: 当前轮次
+#     """
 
-    # 遍历学习率更新阶段
-    for i in range(len(steps)):
-        # 如果当前轮次大于等于设定的阶段轮次
-        if epoch >= steps[i]:
-            # 获取当前阶段的学习率缩放比例
-            scale = scales[i] if i < len(scales) else 1
-            # 根据缩放比例更新学习率
-            lr = lr * scale
-            # 如果当前轮次正好等于设定的阶段轮次，结束循环
-            if epoch == steps[i]:
-                break
-        else:
-            break
+#     # 初始学习率
+#     lr = original_lr
 
-    # 更新优化器中每个参数组的学习率
-    for param_group in optimizer.param_groups:
-        param_group["lr"] = lr
+#     # 遍历学习率更新阶段
+#     for i in range(len(steps)):
+#         # 如果当前轮次大于等于设定的阶段轮次
+#         if epoch >= steps[i]:
+#             # 获取当前阶段的学习率缩放比例
+#             scale = scales[i] if i < len(scales) else 1
+#             # 根据缩放比例更新学习率
+#             lr = lr * scale
+#             # 如果当前轮次正好等于设定的阶段轮次，结束循环
+#             if epoch == steps[i]:
+#                 break
+#         else:
+#             break
+
+#     # 更新优化器中每个参数组的学习率
+#     for param_group in optimizer.param_groups:
+#         param_group["lr"] = lr
 
 
 class AverageMeter(object):
