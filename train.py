@@ -15,6 +15,7 @@ import shutil
 from CSRNet_RGBT.csrnet_rgbt import CSRNet_RGBT
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from Res50.model.Res50 import Res50
+from ECAN.model import CANNet
 
 # from CLIP_EBC import get_model
 
@@ -159,7 +160,7 @@ lr = 1e-5
 original_lr = lr
 
 # 批大小
-batch_size = 4
+batch_size = 1
 
 # 动量
 momentum = 0.95
@@ -189,6 +190,9 @@ print_freq = 30
 img_dir = "./dataset/train/rgb/"
 tir_img_dir = "./dataset/train/tir/"
 gt_dir = "./dataset/train/hdf5s/"
+# img_dir = "./expansion_dataset/rgb/"
+# tir_img_dir = "./expansion_dataset/tir/"
+# gt_dir = "./expansion_dataset/hdf5s/"
 
 # 预训练模型
 pre = None
@@ -207,6 +211,7 @@ def main():
 
     # 创建模型实例，并将其移动到GPU上
     model = CSRNet_RGBT()
+    # model = CANNet()
     model = model.cuda()
 
     # 定义损失函数和优化器
@@ -220,12 +225,13 @@ def main():
     scheduler = ReduceLROnPlateau(
         optimizer,
         mode="min",
-        factor=0.05,
-        patience=2,
+        # factor=0.05,
+        factor=0.5,
+        patience=5,
         threshold=0.0001,
         threshold_mode="rel",
-        cooldown=0,
-        min_lr=0,
+        # cooldown=1,
+        min_lr=1e-10,
         eps=1e-08,
         verbose=True,
     )
@@ -244,7 +250,7 @@ def main():
 
     # 创建数据集实例，并分割为训练集和验证集
     dataset = ImgDataset(
-        img_dir, tir_img_dir, gt_dir, shuffle=False, transform=transform, train=True
+        img_dir, tir_img_dir, gt_dir, shuffle=True, transform=transform, train=True
     )
     train_size = int(0.8 * len(dataset))
     val_size = len(dataset) - train_size
