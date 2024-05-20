@@ -124,8 +124,8 @@ lr = 1e-5
 original_lr = lr
 
 # 批大小
-# batch_size = 4
-batch_size = 1
+batch_size = 4
+# batch_size = 1
 
 # 动量
 momentum = 0.95
@@ -453,7 +453,7 @@ def validate(model, val_loader):
         # 计算预测值和目标值的绝对值误差，并累加到 MAE 中
         mae += abs(
             output.data.sum() - target.sum().type(torch.FloatTensor).cuda()
-        )  # /img.size(0)
+        ) / img.size(0)
 
     # 计算平均 MAE
     mae = mae / len(val_loader)
