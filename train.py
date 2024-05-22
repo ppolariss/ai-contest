@@ -411,10 +411,10 @@ def train(model, criterion, optimizer, epoch, train_loader, curr_lr):
 
     # 迭代训练数据加载器中的每个批次
     for i, (img, target) in enumerate(train_loader):
-        if batch_size == 4:
-            img, target = data_augmentation(img, target)
-        else:
-            img, target = random_flip(img, target)
+        # if batch_size == 4:
+        #     img, target = data_augmentation(img, target)
+        # else:
+        img, target = random_flip(img, target)
         # 记录数据加载所需的时间
         data_time.update(time.time() - end)
 
