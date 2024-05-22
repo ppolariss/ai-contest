@@ -38,6 +38,8 @@ class Res50(nn.Module):
 
         x = self.de_pred(x)
 
+        x = F.upsample(x,scale_factor=1)
+
         return x
 
     def _initialize_weights(self):
