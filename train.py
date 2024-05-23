@@ -156,11 +156,13 @@ class ImgDataset(Dataset):
 
 
 # 学习率
+# TODO check the lr
 lr = 1e-5
 original_lr = lr
 
 # 批大小
-batch_size = 4
+#TODO check the batch size
+batch_size = 1
 
 # 动量
 momentum = 0.95
@@ -187,6 +189,7 @@ seed = time.time()
 print_freq = 30
 
 # 图像路径
+# TODO check the data
 # img_dir = "./dataset/train/rgb/"
 # tir_img_dir = "./dataset/train/tir/"
 # gt_dir = "./dataset/train/hdf5s/"
@@ -237,14 +240,13 @@ def main():
     )
 
     # 数据预处理
-    # TODO 此处可设置数据增强
     transform = transforms.Compose(
         [
             transforms.ToTensor(),
+            # TODO check the mean and std
             transforms.Normalize(
                 mean=[0.485, 0.456, 0.406, 0.397], std=[0.229, 0.224, 0.225, 0.181]
             ),
-            # TODO
         ]
     )
 

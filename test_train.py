@@ -33,7 +33,7 @@ model = model.cuda()
 # ./best/model_best.pth7.5.tar
 
 # TODO: change the path to the best model
-checkpoint = torch.load("./model/model_best.pth4.929.tar")
+checkpoint = torch.load("./model/model_best.pth7.723.tar")
 model.load_state_dict(checkpoint["state_dict"])
 
 # TODO: check the mean and std
