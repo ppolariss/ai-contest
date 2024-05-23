@@ -174,7 +174,7 @@ lr = 1e-5
 original_lr = lr
 
 # 批大小
-#TODO check the batch size
+# TODO check the batch size
 batch_size = 4
 
 # 动量
@@ -346,7 +346,25 @@ def main():
 
 def data_augmentation(img, target):
     input_tensor, target_tensor = random_flip(img, target)
-    return downsample_and_combine(input_tensor, target_tensor)
+    if random.random() > 0.5:
+        input_tensor2, target_tensor2 = split_and_merge(input_tensor, target_tensor)
+    else:
+        input_tensor2, target_tensor2 = split_and_merge(img, target)
+    ran = random.random()
+    if ran > 0.67:
+        input_tensor1, target_tensor1 = downsample_and_combine(img, target)
+    elif ran > 0.33:
+        input_tensor1, target_tensor1 = downsample_and_combine(
+            input_tensor, target_tensor
+        )
+    else:
+        input_tensor1, target_tensor1 = downsample_and_combine(
+            input_tensor2, target_tensor2
+        )
+
+    return torch.cat((input_tensor1, input_tensor2, input_tensor), dim=0), torch.cat(
+        (target_tensor1, target_tensor2, target_tensor), dim=0
+    )
 
 
 def random_flip(input_tensor, target_tensor):
@@ -362,6 +380,7 @@ def random_flip(input_tensor, target_tensor):
 
 def merge(tl, tr, bl, br):
     return torch.cat((torch.cat((tl, tr), dim=-1), torch.cat((bl, br), dim=-1)), dim=-2)
+
 
 def split_and_merge(input_tensor, target_tensor):
     batch_size, channels, height, width = input_tensor.size()
@@ -403,9 +422,7 @@ def split_and_merge(input_tensor, target_tensor):
     new_images_tensor = torch.stack(new_images)
     new_targets_tensor = torch.stack(new_targets)
 
-    return torch.cat((input_tensor, new_images_tensor), dim=0), torch.cat(
-        (target_tensor, new_targets_tensor), dim=0
-    )
+    return new_images_tensor, new_targets_tensor
 
 
 def down_sample(tensor):
@@ -467,9 +484,7 @@ def downsample_and_combine(input_tensor, target_tensor):
         tl, tr, bl, br = target[i], target[i + 1], target[i + 2], target[i + 3]
         new_targets.append(merge(tl, tr, bl, br))
 
-    return torch.cat((input_tensor, torch.stack(new_images)), dim=0), torch.cat(
-        (target_tensor, torch.stack(new_targets)), dim=0
-    )
+    return torch.stack(new_images), torch.stack(new_targets)
 
 
 def train(model, criterion, optimizer, epoch, train_loader, curr_lr):
@@ -577,7 +592,7 @@ def validate(model, val_loader):
         mae += abs(output.data.sum() - target.sum().type(torch.FloatTensor).cuda())
 
     # 计算平均 MAE
-    mae = mae / (len(val_loader)) # * batch_size
+    mae = mae / (len(val_loader))  # * batch_size
     # 打印平均 MAE
     print(" * MAE {mae:.3f} ".format(mae=mae))
 
