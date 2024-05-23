@@ -160,7 +160,7 @@ lr = 1e-5
 original_lr = lr
 
 # 批大小
-batch_size = 1
+batch_size = 4
 
 # 动量
 momentum = 0.95
@@ -187,12 +187,12 @@ seed = time.time()
 print_freq = 30
 
 # 图像路径
-img_dir = "./dataset/train/rgb/"
-tir_img_dir = "./dataset/train/tir/"
-gt_dir = "./dataset/train/hdf5s/"
-# img_dir = "./expansion_dataset/rgb/"
-# tir_img_dir = "./expansion_dataset/tir/"
-# gt_dir = "./expansion_dataset/hdf5s/"
+# img_dir = "./dataset/train/rgb/"
+# tir_img_dir = "./dataset/train/tir/"
+# gt_dir = "./dataset/train/hdf5s/"
+img_dir = "./expansion_dataset/rgb/"
+tir_img_dir = "./expansion_dataset/tir/"
+gt_dir = "./expansion_dataset/hdf5s/"
 
 # 预训练模型
 pre = None
