@@ -382,6 +382,27 @@ def merge(tl, tr, bl, br):
     return torch.cat((torch.cat((tl, tr), dim=-1), torch.cat((bl, br), dim=-1)), dim=-2)
 
 
+def shuffle_two_arrays(arr1, arr2):
+    """
+    Shuffle two arrays such that the corresponding elements in both arrays maintain their relationship.
+
+    Parameters:
+    arr1 (list): The first array to shuffle.
+    arr2 (list): The second array to shuffle, corresponding to arr1.
+
+    Returns:
+    tuple: A tuple containing the two shuffled arrays.
+    """
+    if len(arr1) != len(arr2):
+        raise ValueError("Both arrays must have the same length")
+
+    combined = list(zip(arr1, arr2))
+    random.shuffle(combined)
+    shuffled_arr1, shuffled_arr2 = zip(*combined)
+
+    return list(shuffled_arr1), list(shuffled_arr2)
+
+
 def split_and_merge(input_tensor, target_tensor):
     batch_size, channels, height, width = input_tensor.size()
 
@@ -395,6 +416,18 @@ def split_and_merge(input_tensor, target_tensor):
     target_bottom_left = target_tensor[:, height // 2 :, : width // 2]
     target_bottom_right = target_tensor[:, height // 2 :, width // 2 :]
 
+    input_top_left, target_top_left = shuffle_two_arrays(
+        input_top_left, target_top_left
+    )
+    input_top_right, target_top_right = shuffle_two_arrays(
+        input_top_right, target_top_right
+    )
+    input_bottom_left, target_bottom_left = shuffle_two_arrays(
+        input_bottom_left, target_bottom_left
+    )
+    input_bottom_right, target_bottom_right = shuffle_two_arrays(
+        input_bottom_right, target_bottom_right
+    )
     new_images = []
     new_targets = []
     for i in range(batch_size):
@@ -436,27 +469,6 @@ def down_sample(tensor):
         return tensor[:, ::2, ::2]
     if tensor.dim() == 4:
         return tensor[:, :, ::2, ::2]
-
-
-def shuffle_two_arrays(arr1, arr2):
-    """
-    Shuffle two arrays such that the corresponding elements in both arrays maintain their relationship.
-
-    Parameters:
-    arr1 (list): The first array to shuffle.
-    arr2 (list): The second array to shuffle, corresponding to arr1.
-
-    Returns:
-    tuple: A tuple containing the two shuffled arrays.
-    """
-    if len(arr1) != len(arr2):
-        raise ValueError("Both arrays must have the same length")
-
-    combined = list(zip(arr1, arr2))
-    random.shuffle(combined)
-    shuffled_arr1, shuffled_arr2 = zip(*combined)
-
-    return list(shuffled_arr1), list(shuffled_arr2)
 
 
 def downsample_and_combine(input_tensor, target_tensor):
