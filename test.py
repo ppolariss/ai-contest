@@ -50,6 +50,8 @@ for i in range(len(img_paths)):
     img = transform(img)
     img = img.cuda()
     img = Variable(img)
+    
+
     output = model(img.unsqueeze(0))
     ans = output.detach().cpu().sum()
     ans = "{:.2f}".format(ans.item())
