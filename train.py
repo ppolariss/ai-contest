@@ -203,12 +203,12 @@ print_freq = 30
 
 # 图像路径
 # TODO check the data
-# img_dir = "./dataset/train/rgb/"
-# tir_img_dir = "./dataset/train/tir/"
-# gt_dir = "./dataset/train/hdf5s/"
-img_dir = "./expansion_dataset/rgb/"
-tir_img_dir = "./expansion_dataset/tir/"
-gt_dir = "./expansion_dataset/hdf5s/"
+img_dir = "./dataset/train/rgb/"
+tir_img_dir = "./dataset/train/tir/"
+gt_dir = "./dataset/train/hdf5s/"
+# img_dir = "./expansion_dataset/rgb/"
+# tir_img_dir = "./expansion_dataset/tir/"
+# gt_dir = "./expansion_dataset/hdf5s/"
 
 # 预训练模型
 pre = None
