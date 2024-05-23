@@ -34,12 +34,12 @@ def save_checkpoint(
     torch.save(state, checkpoint_path)
     if is_best and best_prec1 < 7:
         best_model_path = os.path.join(
-            save_dir, task_id + "model_best.pth" + str(best_prec1.item()) + ".tar"
+            save_dir, task_id + "model_best.pth.best" + str(best_prec1.item()) + ".tar"
         )
         shutil.copyfile(checkpoint_path, best_model_path)
     elif is_best:
         best_model_path = os.path.join(
-            save_dir, task_id + "model_best.huai.batch" + str(batch_size) + ".tar"
+            save_dir, task_id + "model_best.pth.batch" + str(batch_size) + ".tar"
         )
         shutil.copyfile(checkpoint_path, best_model_path)
 
@@ -549,7 +549,7 @@ def train(model, criterion, optimizer, epoch, train_loader, curr_lr):
                     loss=losses,
                 )
             )
-        break
+        # break
 
 
 def validate(model, val_loader):
