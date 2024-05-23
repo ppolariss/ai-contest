@@ -34,12 +34,12 @@ def save_checkpoint(
     torch.save(state, checkpoint_path)
     if is_best and best_prec1 < 7:
         best_model_path = os.path.join(
-            save_dir, task_id + "model_best.pth" + str(best_prec1) + ".tar"
+            save_dir, task_id + "model_best.pth" + str(best_prec1.item()) + ".tar"
         )
         shutil.copyfile(checkpoint_path, best_model_path)
     elif is_best:
         best_model_path = os.path.join(
-            save_dir, task_id + "model_best.pth.batch" + str(batch_size) + ".tar"
+            save_dir, task_id + "model_best.huai.batch" + str(batch_size) + ".tar"
         )
         shutil.copyfile(checkpoint_path, best_model_path)
 
@@ -276,7 +276,7 @@ def main():
         train_dataset, batch_size=batch_size, shuffle=True, num_workers=workers
     )
     val_loader = DataLoader(
-        val_dataset, batch_size=batch_size, shuffle=False, num_workers=workers
+        val_dataset, batch_size=1, shuffle=False, num_workers=workers
     )
 
     # 如果指定了预训练模型，则加载预训练参数
@@ -444,7 +444,8 @@ def shuffle_two_arrays(arr1, arr2):
 
 def downsample_and_combine(input_tensor, target_tensor):
     batch_size, channels, height, width = input_tensor.size()
-    assert batch_size % 4 == 0, "Batch size must be a multiple of 4"
+    if batch_size % 4 != 0:
+        return input_tensor, target_tensor
 
     # input_top_left, input_top_right, input_bottom_left, input_bottom_right, target_top_left, target_top_right, target_bottom_left, target_bottom_right = split(
     #     input_tensor, target_tensor
@@ -548,7 +549,7 @@ def train(model, criterion, optimizer, epoch, train_loader, curr_lr):
                     loss=losses,
                 )
             )
-        # break
+        break
 
 
 def validate(model, val_loader):
@@ -576,7 +577,7 @@ def validate(model, val_loader):
         mae += abs(output.data.sum() - target.sum().type(torch.FloatTensor).cuda())
 
     # 计算平均 MAE
-    mae = mae / (len(val_loader) * batch_size)
+    mae = mae / (len(val_loader)) # * batch_size
     # 打印平均 MAE
     print(" * MAE {mae:.3f} ".format(mae=mae))
 
