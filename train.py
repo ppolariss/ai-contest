@@ -548,7 +548,7 @@ def train(model, criterion, optimizer, epoch, train_loader, curr_lr):
                     loss=losses,
                 )
             )
-        break
+        # break
 
 
 def validate(model, val_loader):
