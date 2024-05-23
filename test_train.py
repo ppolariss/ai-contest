@@ -31,21 +31,12 @@ model = CSRNet_RGBT()
 # model = CANNet()
 model = model.cuda()
 # ./best/model_best.pth7.5.tar
-checkpoint = torch.load("./model/model_best.pth.tar")
+
+# TODO: change the path to the best model
+checkpoint = torch.load("./model/model_best.pth4.929.tar")
 model.load_state_dict(checkpoint["state_dict"])
 
-# for i in range(len(img_paths)):
-#     img = 255.0 * F.to_tensor(Image.open(img_paths[i]).convert('RGB'))
-
-#     img[0, :, :] = img[0, :, :]-92.8207477031
-#     img[1, :, :] = img[1, :, :]-95.2757037428
-#     img[2, :, :] = img[2, :, :]-104.877445883
-#     img = img.cuda()
-#     output = model(img.unsqueeze(0))
-#     ans = output.detach().cpu().sum()
-#     ans = "{:.2f}".format(ans.item())
-#     print(f"{i+1},{ans}")
-
+# TODO: check the mean and std
 transform = transforms.Compose(
     [
         transforms.ToTensor(),
@@ -53,11 +44,15 @@ transform = transforms.Compose(
     ]
 )
 
+# TODO: check the batchsize
+batch_size = 1
+
 dataset = ImgDataset(
         img_dir, tir_img_dir, gt_dir, shuffle=True, transform=transform, train=True
     )
+
 val_loader = DataLoader(
-    dataset, batch_size=1, shuffle=False, num_workers=4
+    dataset, batch_size=batch_size, shuffle=False, num_workers=4
 )
 
 def validate(model, val_loader):
@@ -85,7 +80,7 @@ def validate(model, val_loader):
         mae += abs(output.data.sum() - target.sum().type(torch.FloatTensor).cuda())
 
     # 计算平均 MAE
-    mae = mae / (len(val_loader))
+    mae = mae / (len(val_loader) * batch_size)
     # 打印平均 MAE
     print(" * MAE {mae:.3f} ".format(mae=mae))
 
