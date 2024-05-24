@@ -4,13 +4,14 @@ import torch
 from model import CSRNet
 from torchvision import transforms
 from torch.autograd import Variable
+import aiconfig
 
 test_path = "./dataset/test/rgb/"
 img_paths = [f"{test_path}{i}.jpg" for i in range(1, 1001)]
 
 model = CSRNet()
 model = model.cuda()
-checkpoint = torch.load('./model/model_best.pth.tar')
+checkpoint = torch.load(aiconfig.modelPath)
 model.load_state_dict(checkpoint['state_dict'])
 
 # for i in range(len(img_paths)):

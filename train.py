@@ -16,6 +16,7 @@ from CSRNet_RGBT.csrnet_rgbt import CSRNet_RGBT
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from Res50.model.Res50 import Res50
 from ECAN.model import CANNet
+import aiconfig
 
 # from CLIP_EBC import get_model
 
@@ -169,13 +170,11 @@ class ImgDataset(Dataset):
 
 
 # 学习率
-# TODO check the lr
-lr = 1e-5
+lr = aiconfig.lr
 original_lr = lr
 
 # 批大小
-# TODO check the batch size
-batch_size = 4
+batch_size = aiconfig.batch_size
 
 # 动量
 momentum = 0.95

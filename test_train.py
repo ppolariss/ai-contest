@@ -15,6 +15,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from Res50.model.Res50 import Res50
 from ECAN.model import CANNet
 from train import ImgDataset
+import aiconfig
 
 # test_path = "./dataset/train/rgb/"
 # test_tir_path = "./dataset/train/tir/"
@@ -33,7 +34,7 @@ model = model.cuda()
 # ./best/model_best.pth7.5.tar
 
 # TODO: change the path to the best model
-checkpoint = torch.load("./model/model_best.pth7.723.tar")
+checkpoint = torch.load(aiconfig.modelPath)
 model.load_state_dict(checkpoint["state_dict"])
 
 # TODO: check the mean and std

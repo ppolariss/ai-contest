@@ -7,6 +7,7 @@ from torchvision import transforms
 from torch.autograd import Variable
 from CSRNet_RGBT.csrnet_rgbt import CSRNet_RGBT
 from ECAN.model import CANNet
+import aiconfig
 
 test_path = "./dataset/test/rgb/"
 test_tir_path = "./dataset/test/tir/"
@@ -17,7 +18,7 @@ model = CSRNet_RGBT()
 # model = CANNet()
 model = model.cuda()
 # ./best/model_best.pth7.5.tar
-checkpoint = torch.load("./model/model_best.pth.tar")
+checkpoint = torch.load(aiconfig.modelPath)
 model.load_state_dict(checkpoint["state_dict"])
 
 # for i in range(len(img_paths)):
