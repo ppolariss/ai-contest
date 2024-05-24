@@ -51,13 +51,11 @@ class CSRNet(nn.Module):
                 self.frontend.state_dict()[key].data[:] = list(
                     mod.state_dict().items()
                 )[i][1].data[:]
-        # self.relu = nn.ReLU(inplace=True)
 
     def forward(self, x):
         x = self.frontend(x)
         x = self.backend(x)
         x = self.output_layer(x)
-        # x = self.relu(x)
         return x
 
     # 初始化权重
