@@ -11,4 +11,5 @@
 /downsample_combined/
 /expansion_dataset/**
 /split_temp/**
-/**.zip
+/expansion_dataset.zip
+/dataset.zip

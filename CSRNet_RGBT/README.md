@@ -8,5 +8,3 @@ from CSRNet_RGBT.csrnet_rgbt import CSRNet
 model = CSRNet()
 ...
 ```
-
-lr start : 1e-5

@@ -124,8 +124,8 @@ lr = 1e-5
 original_lr = lr
 
 # 批大小
-batch_size = 4
-# batch_size = 1
+# batch_size = 8
+batch_size = 1
 
 # 动量
 momentum = 0.95
@@ -179,9 +179,7 @@ def main():
     model = model.cuda()
 
     # 定义损失函数和优化器
-    #
-    criterion = nn.MSELoss(reduction="sum").cuda()
-    # criterion = nn.MSELoss(size_average=False).cuda()
+    criterion = nn.MSELoss(size_average=False).cuda()
     # optimizer = torch.optim.SGD(
     #     model.parameters(), lr, momentum=momentum, weight_decay=decay
     # )
@@ -245,14 +243,7 @@ def main():
         # adjust_learning_rate(optimizer, epoch)
 
         # 训练模型
-        train(
-            model,
-            criterion,
-            optimizer,
-            epoch,
-            train_loader,
-            optimizer.param_groups[0]["lr"],
-        )
+        train(model, criterion, optimizer, epoch, train_loader)
         # 在验证集上评估模型性能
         prec1 = validate(model, val_loader)
 
@@ -281,73 +272,7 @@ def main():
         )
 
 
-def data_augmentation(img, target):
-    input_tensor, target_tensor = random_flip(img, target)
-    return split_and_merge(input_tensor, target_tensor)
-
-
-def random_flip(input_tensor, target_tensor):
-    for i in range(input_tensor.size(0)):
-        if random.random() > 0.5:
-            input_tensor[i] = torch.flip(input_tensor[i], dims=[2])
-            target_tensor[i] = torch.flip(target_tensor[i], dims=[1])
-        if random.random() > 0.5:
-            input_tensor[i] = torch.flip(input_tensor[i], dims=[1])
-            target_tensor[i] = torch.flip(target_tensor[i], dims=[0])
-    return input_tensor, target_tensor
-
-
-def split_and_merge(input_tensor, target_tensor):
-    batch_size, channels, height, width = input_tensor.size()
-
-    input_top_left = input_tensor[:, :, : height // 2, : width // 2]
-    input_top_right = input_tensor[:, :, : height // 2, width // 2 :]
-    input_bottom_left = input_tensor[:, :, height // 2 :, : width // 2]
-    input_bottom_right = input_tensor[:, :, height // 2 :, width // 2 :]
-
-    target_top_left = target_tensor[:, : height // 2, : width // 2]
-    target_top_right = target_tensor[:, : height // 2, width // 2 :]
-    target_bottom_left = target_tensor[:, height // 2 :, : width // 2]
-    target_bottom_right = target_tensor[:, height // 2 :, width // 2 :]
-
-    new_images = []
-    new_targets = []
-    for i in range(batch_size):
-        idx1 = i
-        idx2 = (i + 1) % batch_size
-        idx3 = (i + 2) % batch_size
-        idx4 = (i + 3) % batch_size
-        new_image1_top = torch.cat(
-            (input_top_left[idx1], input_top_right[idx2]), dim=-1
-        )
-        new_image1_bottom = torch.cat(
-            (input_bottom_left[idx3], input_bottom_right[idx4]), dim=-1
-        )
-        new_image1 = torch.cat((new_image1_top, new_image1_bottom), dim=-2)
-        # print(new_image1.shape)
-        # print(new_image1)
-
-        new_images.append(new_image1)
-
-        new_target_top = torch.cat(
-            (target_top_left[idx1], target_top_right[idx2]), dim=-1
-        )
-        new_target_bottom = torch.cat(
-            (target_bottom_left[idx3], target_bottom_right[idx4]), dim=-1
-        )
-        new_target = torch.cat((new_target_top, new_target_bottom), dim=-2)
-
-        new_targets.append(new_target)
-
-    new_images_tensor = torch.stack(new_images)
-    new_targets_tensor = torch.stack(new_targets)
-
-    return torch.cat((input_tensor, new_images_tensor), dim=0), torch.cat(
-        (target_tensor, new_targets_tensor), dim=0
-    )
-
-
-def train(model, criterion, optimizer, epoch, train_loader, curr_lr):
+def train(model, criterion, optimizer, epoch, train_loader):
     """
     model: 训练的模型
     criterion: 损失函数
@@ -364,7 +289,7 @@ def train(model, criterion, optimizer, epoch, train_loader, curr_lr):
     # 打印当前训练轮次、已处理的样本数量以及学习率
     print(
         "epoch %d, processed %d samples, lr %.10f"
-        % (epoch, epoch * len(train_loader.dataset), curr_lr)
+        % (epoch, epoch * len(train_loader.dataset), lr)
     )
 
     # 将模型设置为训练模式
@@ -373,13 +298,6 @@ def train(model, criterion, optimizer, epoch, train_loader, curr_lr):
 
     # 迭代训练数据加载器中的每个批次
     for i, (img, target) in enumerate(train_loader):
-        if batch_size == 4:
-            img, target = data_augmentation(img, target)
-        else:
-            img, target = random_flip(img, target)
-        # print(img.shape)
-        # print(target.shape)
-
         # 记录数据加载所需的时间
         data_time.update(time.time() - end)
 
@@ -409,8 +327,6 @@ def train(model, criterion, optimizer, epoch, train_loader, curr_lr):
         # 记录批处理所需的时间
         batch_time.update(time.time() - end)
         end = time.time()
-
-        torch.cuda.empty_cache()
 
         # 如果满足打印频率条件，则打印当前训练轮次、当前处理的批次、总批次数以及损失、批处理时间和数据加载时间的平均值
         if i % print_freq == 0:
@@ -451,9 +367,7 @@ def validate(model, val_loader):
         output = model(img)
 
         # 计算预测值和目标值的绝对值误差，并累加到 MAE 中
-        mae += abs(
-            output.data.sum() - target.sum().type(torch.FloatTensor).cuda()
-        ) / img.size(0)
+        mae += abs(output.data.sum() - target.sum().type(torch.FloatTensor).cuda())
 
     # 计算平均 MAE
     mae = mae / len(val_loader)

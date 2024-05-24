@@ -15,32 +15,17 @@ import shutil
 from CSRNet_RGBT.csrnet_rgbt import CSRNet_RGBT
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from Res50.model.Res50 import Res50
-from ECAN.model import CANNet
-
 # from CLIP_EBC import get_model
 
 
 # 用于保存最佳模型
 def save_checkpoint(
-    state,
-    is_best,
-    last_prec,
-    best_prec1,
-    task_id,
-    filename="checkpoint.pth.tar",
-    save_dir="./model/",
+    state, is_best, task_id, filename="checkpoint.pth.tar", save_dir="./model/"
 ):
     checkpoint_path = os.path.join(save_dir, task_id + filename)
     torch.save(state, checkpoint_path)
-    if is_best and best_prec1 < 7:
-        best_model_path = os.path.join(
-            save_dir, task_id + "model_best.pth.best" + str(best_prec1.item()) + ".tar"
-        )
-        shutil.copyfile(checkpoint_path, best_model_path)
-    elif is_best:
-        best_model_path = os.path.join(
-            save_dir, task_id + "model_best.pth.batch" + str(batch_size) + ".tar"
-        )
+    if is_best:
+        best_model_path = os.path.join(save_dir, task_id + "model_best.pth.tar")
         shutil.copyfile(checkpoint_path, best_model_path)
 
 
@@ -169,12 +154,10 @@ class ImgDataset(Dataset):
 
 
 # 学习率
-# TODO check the lr
 lr = 1e-5
 original_lr = lr
 
 # 批大小
-# TODO check the batch size
 batch_size = 4
 
 # 动量
@@ -186,10 +169,10 @@ decay = 5 * 1e-4
 # 训练轮数
 epochs = 400
 
-# decay_interval = 30
-# steps = [i * decay_interval for i in range(1, epochs // decay_interval + 1)]
-# # 每次衰减的系数为 0.1（即学习率降低 10 倍）
-# scales = [decay_interval] * len(steps)
+decay_interval = 30
+steps = [i * decay_interval for i in range(1, epochs // decay_interval + 1)]
+# 每次衰减的系数为 0.1（即学习率降低 10 倍）
+scales = [decay_interval] * len(steps)
 
 
 # 工作线程数
@@ -202,13 +185,9 @@ seed = time.time()
 print_freq = 30
 
 # 图像路径
-# TODO check the data
 img_dir = "./dataset/train/rgb/"
 tir_img_dir = "./dataset/train/tir/"
 gt_dir = "./dataset/train/hdf5s/"
-# img_dir = "./expansion_dataset/rgb/"
-# tir_img_dir = "./expansion_dataset/tir/"
-# gt_dir = "./expansion_dataset/hdf5s/"
 
 # 预训练模型
 pre = None
@@ -227,7 +206,6 @@ def main():
 
     # 创建模型实例，并将其移动到GPU上
     model = CSRNet_RGBT()
-    # model = CANNet()
     model = model.cuda()
 
     # 定义损失函数和优化器
@@ -236,37 +214,32 @@ def main():
     optimizer = torch.optim.SGD(
         model.parameters(), lr, momentum=momentum, weight_decay=decay
     )
-    # optimizer = optim.Adam(model.parameters(), lr=lr)
 
     scheduler = ReduceLROnPlateau(
         optimizer,
         mode="min",
-        # factor=0.2,
-        factor=0.5,
-        patience=5,
+        factor=0.05,
+        patience=2,
         threshold=0.0001,
         threshold_mode="rel",
-        # cooldown=1,
-        min_lr=1e-10,
+        cooldown=0,
+        min_lr=0,
         eps=1e-08,
         verbose=True,
     )
 
     # 数据预处理
+    # TODO 此处可设置数据增强
     transform = transforms.Compose(
         [
             transforms.ToTensor(),
-            # TODO check the mean and std
-            transforms.Normalize(
-                mean=[0.485, 0.456, 0.406, 0.397], std=[0.229, 0.224, 0.225, 0.181]
-            ),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406, 0.456], std=[0.229, 0.224, 0.225, 0.224]),
+            # TODO
         ]
     )
 
     # 创建数据集实例，并分割为训练集和验证集
-    dataset = ImgDataset(
-        img_dir, tir_img_dir, gt_dir, shuffle=True, transform=transform, train=True
-    )
+    dataset = ImgDataset(img_dir, tir_img_dir, gt_dir, shuffle=False,transform=transform, train=True)
     train_size = int(0.8 * len(dataset))
     val_size = len(dataset) - train_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
@@ -276,7 +249,7 @@ def main():
         train_dataset, batch_size=batch_size, shuffle=True, num_workers=workers
     )
     val_loader = DataLoader(
-        val_dataset, batch_size=1, shuffle=False, num_workers=workers
+        val_dataset, batch_size=batch_size, shuffle=False, num_workers=workers
     )
 
     # 如果指定了预训练模型，则加载预训练参数
@@ -295,37 +268,22 @@ def main():
         else:
             print("=> no checkpoint found at '{}'".format(pre))
 
-    last_update = 0
     # 循环训练epochs轮
     for epoch in range(start_epoch, epochs):
         # 调整学习率
-        # adjust_learning_rate(optimizer, epoch)
+        adjust_learning_rate(optimizer, epoch)
 
         # 训练模型
-        train(
-            model,
-            criterion,
-            optimizer,
-            epoch,
-            train_loader,
-            optimizer.param_groups[0]["lr"],
-        )
+        train(model, criterion, optimizer, epoch, train_loader)
         # 在验证集上评估模型性能
         prec1 = validate(model, val_loader)
 
         scheduler.step(prec1)
 
         # 判断当前模型是否是最佳模型
-        last_prec = best_prec1
         is_best = prec1 < best_prec1
-        if is_best:
-            last_update = epoch
-            best_prec1 = min(prec1, best_prec1)
-        print(
-            " * best MAE {mae:.3f} in epoch {epoch}".format(
-                mae=best_prec1, epoch=last_update
-            )
-        )
+        best_prec1 = min(prec1, best_prec1)
+        print(" * best MAE {mae:.3f} ".format(mae=best_prec1))
 
         # 保存模型参数
         save_checkpoint(
@@ -338,168 +296,11 @@ def main():
                 "scheduler": scheduler.state_dict(),
             },
             is_best,
-            last_prec,
-            best_prec1,
             task,
         )
 
 
-def data_augmentation(img, target):
-    input_tensor, target_tensor = random_flip(img, target)
-    if random.random() > 0.5:
-        input_tensor2, target_tensor2 = split_and_merge(input_tensor, target_tensor)
-    else:
-        input_tensor2, target_tensor2 = split_and_merge(img, target)
-    ran = random.random()
-    if ran > 0.67:
-        input_tensor1, target_tensor1 = downsample_and_combine(img, target)
-    elif ran > 0.33:
-        input_tensor1, target_tensor1 = downsample_and_combine(
-            input_tensor, target_tensor
-        )
-    else:
-        input_tensor1, target_tensor1 = downsample_and_combine(
-            input_tensor2, target_tensor2
-        )
-
-    return torch.cat((input_tensor1, input_tensor2, input_tensor), dim=0), torch.cat(
-        (target_tensor1, target_tensor2, target_tensor), dim=0
-    )
-
-
-def random_flip(input_tensor, target_tensor):
-    for i in range(input_tensor.size(0)):
-        if random.random() > 0.5:
-            input_tensor[i] = torch.flip(input_tensor[i], dims=[2])
-            target_tensor[i] = torch.flip(target_tensor[i], dims=[1])
-        if random.random() > 0.5:
-            input_tensor[i] = torch.flip(input_tensor[i], dims=[1])
-            target_tensor[i] = torch.flip(target_tensor[i], dims=[0])
-    return input_tensor, target_tensor
-
-
-def merge(tl, tr, bl, br):
-    return torch.cat((torch.cat((tl, tr), dim=-1), torch.cat((bl, br), dim=-1)), dim=-2)
-
-
-def shuffle_two_arrays(arr1, arr2):
-    """
-    Shuffle two arrays such that the corresponding elements in both arrays maintain their relationship.
-
-    Parameters:
-    arr1 (list): The first array to shuffle.
-    arr2 (list): The second array to shuffle, corresponding to arr1.
-
-    Returns:
-    tuple: A tuple containing the two shuffled arrays.
-    """
-    if len(arr1) != len(arr2):
-        raise ValueError("Both arrays must have the same length")
-
-    combined = list(zip(arr1, arr2))
-    random.shuffle(combined)
-    shuffled_arr1, shuffled_arr2 = zip(*combined)
-
-    return list(shuffled_arr1), list(shuffled_arr2)
-
-
-def split_and_merge(input_tensor, target_tensor):
-    batch_size, channels, height, width = input_tensor.size()
-
-    input_top_left = input_tensor[:, :, : height // 2, : width // 2]
-    input_top_right = input_tensor[:, :, : height // 2, width // 2 :]
-    input_bottom_left = input_tensor[:, :, height // 2 :, : width // 2]
-    input_bottom_right = input_tensor[:, :, height // 2 :, width // 2 :]
-
-    target_top_left = target_tensor[:, : height // 2, : width // 2]
-    target_top_right = target_tensor[:, : height // 2, width // 2 :]
-    target_bottom_left = target_tensor[:, height // 2 :, : width // 2]
-    target_bottom_right = target_tensor[:, height // 2 :, width // 2 :]
-
-    input_top_left, target_top_left = shuffle_two_arrays(
-        input_top_left, target_top_left
-    )
-    input_top_right, target_top_right = shuffle_two_arrays(
-        input_top_right, target_top_right
-    )
-    input_bottom_left, target_bottom_left = shuffle_two_arrays(
-        input_bottom_left, target_bottom_left
-    )
-    input_bottom_right, target_bottom_right = shuffle_two_arrays(
-        input_bottom_right, target_bottom_right
-    )
-    new_images = []
-    new_targets = []
-    for i in range(batch_size):
-        idx1 = i
-        idx2 = (i + 1) % batch_size
-        idx3 = (i + 2) % batch_size
-        idx4 = (i + 3) % batch_size
-        new_images.append(
-            merge(
-                input_top_left[idx1],
-                input_top_right[idx2],
-                input_bottom_left[idx3],
-                input_bottom_right[idx4],
-            )
-        )
-        new_targets.append(
-            merge(
-                target_top_left[idx1],
-                target_top_right[idx2],
-                target_bottom_left[idx3],
-                target_bottom_right[idx4],
-            )
-        )
-
-    new_images_tensor = torch.stack(new_images)
-    new_targets_tensor = torch.stack(new_targets)
-
-    return new_images_tensor, new_targets_tensor
-
-
-def down_sample(tensor):
-    """
-    Downsample the image tensor by a factor of 2.
-    Only keep the top-left pixel of each 2x2 block.
-    """
-    if tensor.dim() == 2:
-        return tensor[::2, ::2]
-    if tensor.dim() == 3:
-        return tensor[:, ::2, ::2]
-    if tensor.dim() == 4:
-        return tensor[:, :, ::2, ::2]
-
-
-def downsample_and_combine(input_tensor, target_tensor):
-    batch_size, channels, height, width = input_tensor.size()
-    if batch_size % 4 != 0:
-        return input_tensor, target_tensor
-
-    # input_top_left, input_top_right, input_bottom_left, input_bottom_right, target_top_left, target_top_right, target_bottom_left, target_bottom_right = split(
-    #     input_tensor, target_tensor
-    # )
-    data = []
-    target = []
-    for i in range(batch_size):
-        data.append(down_sample(input_tensor[i]))
-        target.append(down_sample(target_tensor[i]))
-    # wash card
-    data, target = shuffle_two_arrays(data, target)
-
-    new_images = []
-    new_targets = []
-
-    for i in range(batch_size // 4):
-        tl, tr, bl, br = data[i], data[i + 1], data[i + 2], data[i + 3]
-        new_images.append(merge(tl, tr, bl, br))
-        tl, tr, bl, br = target[i], target[i + 1], target[i + 2], target[i + 3]
-        new_targets.append(merge(tl, tr, bl, br))
-
-    return torch.stack(new_images), torch.stack(new_targets)
-
-
-def train(model, criterion, optimizer, epoch, train_loader, curr_lr):
+def train(model, criterion, optimizer, epoch, train_loader):
     """
     model: 训练的模型
     criterion: 损失函数
@@ -516,7 +317,7 @@ def train(model, criterion, optimizer, epoch, train_loader, curr_lr):
     # 打印当前训练轮次、已处理的样本数量以及学习率
     print(
         "epoch %d, processed %d samples, lr %.10f"
-        % (epoch, epoch * len(train_loader.dataset), curr_lr)
+        % (epoch, epoch * len(train_loader.dataset), lr)
     )
 
     # 将模型设置为训练模式
@@ -525,12 +326,9 @@ def train(model, criterion, optimizer, epoch, train_loader, curr_lr):
 
     # 迭代训练数据加载器中的每个批次
     for i, (img, target) in enumerate(train_loader):
-        if batch_size == 4:
-            img, target = data_augmentation(img, target)
-        else:
-            img, target = random_flip(img, target)
         # 记录数据加载所需的时间
         data_time.update(time.time() - end)
+
 
         # 将输入图像移动到 GPU 上
         img = img.cuda()
@@ -576,7 +374,6 @@ def train(model, criterion, optimizer, epoch, train_loader, curr_lr):
                     loss=losses,
                 )
             )
-        # break
 
 
 def validate(model, val_loader):
@@ -601,10 +398,10 @@ def validate(model, val_loader):
         output = model(img)
 
         # 计算预测值和目标值的绝对值误差，并累加到 MAE 中
-        mae += abs(output.data.sum() - target.sum().type(torch.FloatTensor).cuda())
+        mae += abs(output.data.sum() - target.sum().type(torch.FloatTensor).cuda()) 
 
     # 计算平均 MAE
-    mae = mae / (len(val_loader))  # * batch_size
+    mae = mae / (len(val_loader) * batch_size)
     # 打印平均 MAE
     print(" * MAE {mae:.3f} ".format(mae=mae))
 
@@ -613,34 +410,33 @@ def validate(model, val_loader):
 
 # ReduceLROnPlateau
 # CosineAnnealingWarmRestarts
+def adjust_learning_rate(optimizer, epoch):
+    """
+    根据当前轮次调整学习率，每隔30个轮次学习率衰减为初始学习率的1/10
+    optimizer: 优化器
+    epoch: 当前轮次
+    """
 
-# def adjust_learning_rate(optimizer, epoch):
-#     """
-#     根据当前轮次调整学习率，每隔30个轮次学习率衰减为初始学习率的1/10
-#     optimizer: 优化器
-#     epoch: 当前轮次
-#     """
+    # 初始学习率
+    lr = original_lr
 
-#     # 初始学习率
-#     lr = original_lr
+    # 遍历学习率更新阶段
+    for i in range(len(steps)):
+        # 如果当前轮次大于等于设定的阶段轮次
+        if epoch >= steps[i]:
+            # 获取当前阶段的学习率缩放比例
+            scale = scales[i] if i < len(scales) else 1
+            # 根据缩放比例更新学习率
+            lr = lr * scale
+            # 如果当前轮次正好等于设定的阶段轮次，结束循环
+            if epoch == steps[i]:
+                break
+        else:
+            break
 
-#     # 遍历学习率更新阶段
-#     for i in range(len(steps)):
-#         # 如果当前轮次大于等于设定的阶段轮次
-#         if epoch >= steps[i]:
-#             # 获取当前阶段的学习率缩放比例
-#             scale = scales[i] if i < len(scales) else 1
-#             # 根据缩放比例更新学习率
-#             lr = lr * scale
-#             # 如果当前轮次正好等于设定的阶段轮次，结束循环
-#             if epoch == steps[i]:
-#                 break
-#         else:
-#             break
-
-#     # 更新优化器中每个参数组的学习率
-#     for param_group in optimizer.param_groups:
-#         param_group["lr"] = lr
+    # 更新优化器中每个参数组的学习率
+    for param_group in optimizer.param_groups:
+        param_group["lr"] = lr
 
 
 class AverageMeter(object):

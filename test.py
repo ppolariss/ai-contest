@@ -6,7 +6,6 @@ from model import CSRNet
 from torchvision import transforms
 from torch.autograd import Variable
 from CSRNet_RGBT.csrnet_rgbt import CSRNet_RGBT
-from ECAN.model import CANNet
 
 test_path = "./dataset/test/rgb/"
 test_tir_path = "./dataset/test/tir/"
@@ -14,7 +13,6 @@ img_paths = [f"{test_path}{i}.jpg" for i in range(1, 1001)]
 tir_img_paths = [f"{test_tir_path}{i}R.jpg" for i in range(1, 1001)]
 
 model = CSRNet_RGBT()
-# model = CANNet()
 model = model.cuda()
 # ./best/model_best.pth7.5.tar
 checkpoint = torch.load("./model/model_best.pth.tar")
@@ -35,7 +33,7 @@ model.load_state_dict(checkpoint["state_dict"])
 transform = transforms.Compose(
     [
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406, 0.397], std=[0.229, 0.224, 0.225, 0.181]),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406, 0.456], std=[0.229, 0.224, 0.225, 0.224]),
     ]
 )
 
@@ -50,8 +48,6 @@ for i in range(len(img_paths)):
     img = transform(img)
     img = img.cuda()
     img = Variable(img)
-    
-
     output = model(img.unsqueeze(0))
     ans = output.detach().cpu().sum()
     ans = "{:.2f}".format(ans.item())
