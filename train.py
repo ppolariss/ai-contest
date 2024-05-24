@@ -15,17 +15,32 @@ import shutil
 from CSRNet_RGBT.csrnet_rgbt import CSRNet_RGBT
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from Res50.model.Res50 import Res50
+from ECAN.model import CANNet
+
 # from CLIP_EBC import get_model
 
 
 # 用于保存最佳模型
 def save_checkpoint(
-    state, is_best, task_id, filename="checkpoint.pth.tar", save_dir="./model/"
+    state,
+    is_best,
+    last_prec,
+    best_prec1,
+    task_id,
+    filename="checkpoint.pth.tar",
+    save_dir="./model/",
 ):
     checkpoint_path = os.path.join(save_dir, task_id + filename)
     torch.save(state, checkpoint_path)
-    if is_best:
-        best_model_path = os.path.join(save_dir, task_id + "model_best.pth.tar")
+    if is_best and best_prec1 < 7:
+        best_model_path = os.path.join(
+            save_dir, task_id + "model_best.pth.best" + str(best_prec1.item()) + ".tar"
+        )
+        shutil.copyfile(checkpoint_path, best_model_path)
+    elif is_best:
+        best_model_path = os.path.join(
+            save_dir, task_id + "model_best.pth.batch" + str(batch_size) + ".tar"
+        )
         shutil.copyfile(checkpoint_path, best_model_path)
 
 
@@ -154,10 +169,12 @@ class ImgDataset(Dataset):
 
 
 # 学习率
+# TODO check the lr
 lr = 1e-5
 original_lr = lr
 
 # 批大小
+# TODO check the batch size
 batch_size = 4
 
 # 动量
@@ -169,10 +186,10 @@ decay = 5 * 1e-4
 # 训练轮数
 epochs = 400
 
-decay_interval = 30
-steps = [i * decay_interval for i in range(1, epochs // decay_interval + 1)]
-# 每次衰减的系数为 0.1（即学习率降低 10 倍）
-scales = [decay_interval] * len(steps)
+# decay_interval = 30
+# steps = [i * decay_interval for i in range(1, epochs // decay_interval + 1)]
+# # 每次衰减的系数为 0.1（即学习率降低 10 倍）
+# scales = [decay_interval] * len(steps)
 
 
 # 工作线程数
@@ -185,6 +202,7 @@ seed = time.time()
 print_freq = 30
 
 # 图像路径
+# TODO check the data
 img_dir = "./dataset/train/rgb/"
 tir_img_dir = "./dataset/train/tir/"
 gt_dir = "./dataset/train/hdf5s/"
@@ -206,6 +224,7 @@ def main():
 
     # 创建模型实例，并将其移动到GPU上
     model = CSRNet_RGBT()
+    # model = CANNet()
     model = model.cuda()
 
     # 定义损失函数和优化器
@@ -214,7 +233,9 @@ def main():
     optimizer = torch.optim.SGD(
         model.parameters(), lr, momentum=momentum, weight_decay=decay
     )
+    # optimizer = optim.Adam(model.parameters(), lr=lr)
 
+    # TODO1
     scheduler = ReduceLROnPlateau(
         optimizer,
         mode="min",
@@ -223,23 +244,27 @@ def main():
         threshold=0.0001,
         threshold_mode="rel",
         cooldown=0,
-        min_lr=0,
+        min_lr=1e-10,
         eps=1e-08,
         verbose=True,
     )
 
     # 数据预处理
-    # TODO 此处可设置数据增强
     transform = transforms.Compose(
         [
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406, 0.456], std=[0.229, 0.224, 0.225, 0.224]),
-            # TODO
+            # TODO check the mean and std
+            transforms.Normalize(
+                mean=[0.485, 0.456, 0.406, 0.397], std=[0.229, 0.224, 0.225, 0.181]
+            ),
         ]
     )
 
+    # TODO2
     # 创建数据集实例，并分割为训练集和验证集
-    dataset = ImgDataset(img_dir, tir_img_dir, gt_dir, shuffle=False,transform=transform, train=True)
+    dataset = ImgDataset(
+        img_dir, tir_img_dir, gt_dir, shuffle=False, transform=transform, train=True
+    )
     train_size = int(0.8 * len(dataset))
     val_size = len(dataset) - train_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
@@ -249,7 +274,7 @@ def main():
         train_dataset, batch_size=batch_size, shuffle=True, num_workers=workers
     )
     val_loader = DataLoader(
-        val_dataset, batch_size=batch_size, shuffle=False, num_workers=workers
+        val_dataset, batch_size=1, shuffle=False, num_workers=workers
     )
 
     # 如果指定了预训练模型，则加载预训练参数
@@ -268,22 +293,37 @@ def main():
         else:
             print("=> no checkpoint found at '{}'".format(pre))
 
+    last_update = 0
     # 循环训练epochs轮
     for epoch in range(start_epoch, epochs):
         # 调整学习率
-        adjust_learning_rate(optimizer, epoch)
+        # adjust_learning_rate(optimizer, epoch)
 
         # 训练模型
-        train(model, criterion, optimizer, epoch, train_loader)
+        train(
+            model,
+            criterion,
+            optimizer,
+            epoch,
+            train_loader,
+            optimizer.param_groups[0]["lr"],
+        )
         # 在验证集上评估模型性能
         prec1 = validate(model, val_loader)
 
         scheduler.step(prec1)
 
         # 判断当前模型是否是最佳模型
+        last_prec = best_prec1
         is_best = prec1 < best_prec1
-        best_prec1 = min(prec1, best_prec1)
-        print(" * best MAE {mae:.3f} ".format(mae=best_prec1))
+        if is_best:
+            last_update = epoch
+            best_prec1 = min(prec1, best_prec1)
+        print(
+            " * best MAE {mae:.3f} in epoch {epoch}".format(
+                mae=best_prec1, epoch=last_update
+            )
+        )
 
         # 保存模型参数
         save_checkpoint(
@@ -296,11 +336,13 @@ def main():
                 "scheduler": scheduler.state_dict(),
             },
             is_best,
+            last_prec,
+            best_prec1,
             task,
         )
 
-
-def train(model, criterion, optimizer, epoch, train_loader):
+# TODO3 data
+def train(model, criterion, optimizer, epoch, train_loader, curr_lr):
     """
     model: 训练的模型
     criterion: 损失函数
@@ -317,7 +359,7 @@ def train(model, criterion, optimizer, epoch, train_loader):
     # 打印当前训练轮次、已处理的样本数量以及学习率
     print(
         "epoch %d, processed %d samples, lr %.10f"
-        % (epoch, epoch * len(train_loader.dataset), lr)
+        % (epoch, epoch * len(train_loader.dataset), curr_lr)
     )
 
     # 将模型设置为训练模式
@@ -328,7 +370,6 @@ def train(model, criterion, optimizer, epoch, train_loader):
     for i, (img, target) in enumerate(train_loader):
         # 记录数据加载所需的时间
         data_time.update(time.time() - end)
-
 
         # 将输入图像移动到 GPU 上
         img = img.cuda()
@@ -374,6 +415,7 @@ def train(model, criterion, optimizer, epoch, train_loader):
                     loss=losses,
                 )
             )
+        # break
 
 
 def validate(model, val_loader):
@@ -398,10 +440,10 @@ def validate(model, val_loader):
         output = model(img)
 
         # 计算预测值和目标值的绝对值误差，并累加到 MAE 中
-        mae += abs(output.data.sum() - target.sum().type(torch.FloatTensor).cuda()) 
+        mae += abs(output.data.sum() - target.sum().type(torch.FloatTensor).cuda())
 
     # 计算平均 MAE
-    mae = mae / (len(val_loader) * batch_size)
+    mae = mae / (len(val_loader))  # * batch_size
     # 打印平均 MAE
     print(" * MAE {mae:.3f} ".format(mae=mae))
 
@@ -410,33 +452,34 @@ def validate(model, val_loader):
 
 # ReduceLROnPlateau
 # CosineAnnealingWarmRestarts
-def adjust_learning_rate(optimizer, epoch):
-    """
-    根据当前轮次调整学习率，每隔30个轮次学习率衰减为初始学习率的1/10
-    optimizer: 优化器
-    epoch: 当前轮次
-    """
 
-    # 初始学习率
-    lr = original_lr
+# def adjust_learning_rate(optimizer, epoch):
+#     """
+#     根据当前轮次调整学习率，每隔30个轮次学习率衰减为初始学习率的1/10
+#     optimizer: 优化器
+#     epoch: 当前轮次
+#     """
 
-    # 遍历学习率更新阶段
-    for i in range(len(steps)):
-        # 如果当前轮次大于等于设定的阶段轮次
-        if epoch >= steps[i]:
-            # 获取当前阶段的学习率缩放比例
-            scale = scales[i] if i < len(scales) else 1
-            # 根据缩放比例更新学习率
-            lr = lr * scale
-            # 如果当前轮次正好等于设定的阶段轮次，结束循环
-            if epoch == steps[i]:
-                break
-        else:
-            break
+#     # 初始学习率
+#     lr = original_lr
 
-    # 更新优化器中每个参数组的学习率
-    for param_group in optimizer.param_groups:
-        param_group["lr"] = lr
+#     # 遍历学习率更新阶段
+#     for i in range(len(steps)):
+#         # 如果当前轮次大于等于设定的阶段轮次
+#         if epoch >= steps[i]:
+#             # 获取当前阶段的学习率缩放比例
+#             scale = scales[i] if i < len(scales) else 1
+#             # 根据缩放比例更新学习率
+#             lr = lr * scale
+#             # 如果当前轮次正好等于设定的阶段轮次，结束循环
+#             if epoch == steps[i]:
+#                 break
+#         else:
+#             break
+
+#     # 更新优化器中每个参数组的学习率
+#     for param_group in optimizer.param_groups:
+#         param_group["lr"] = lr
 
 
 class AverageMeter(object):

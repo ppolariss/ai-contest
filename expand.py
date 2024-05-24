@@ -8,7 +8,7 @@ import shutil
 import label
 
 if __name__ == "__main__":
-    flip, downsample, combined = True, True, True
+    flip, downsample, combined = False, True, False
 
     output_dir = "expansion_dataset"
     output_rgb_dir = f"{output_dir}/rgb"
