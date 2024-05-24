@@ -175,7 +175,7 @@ original_lr = lr
 
 # 批大小
 # TODO check the batch size
-batch_size = 1
+batch_size = 4
 
 # 动量
 momentum = 0.95
@@ -255,7 +255,8 @@ def main():
             transforms.ToTensor(),
             # TODO check the mean and std
             transforms.Normalize(
-                mean=[0.452, 0.411, 0.362, 0.397], std=[0.188, 0.167, 0.162, 0.181]
+                mean=[0.349, 0.335, 0.352, 0.495], std=[0.151 , 0.145, 0.146, 0.159]
+                # mean=[0.452, 0.411, 0.362, 0.397], std=[0.188, 0.167, 0.162, 0.181]
             ),
         ]
     )
