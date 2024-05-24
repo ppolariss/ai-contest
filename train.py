@@ -175,7 +175,7 @@ original_lr = lr
 
 # 批大小
 # TODO check the batch size
-batch_size = 4
+batch_size = 1
 
 # 动量
 momentum = 0.95
@@ -239,8 +239,8 @@ def main():
     scheduler = ReduceLROnPlateau(
         optimizer,
         mode="min",
-        factor=0.05,
-        patience=2,
+        factor=0.1,
+        patience=5,
         threshold=0.0001,
         threshold_mode="rel",
         cooldown=0,
@@ -255,7 +255,7 @@ def main():
             transforms.ToTensor(),
             # TODO check the mean and std
             transforms.Normalize(
-                mean=[0.485, 0.456, 0.406, 0.397], std=[0.229, 0.224, 0.225, 0.181]
+                mean=[0.452, 0.411, 0.362, 0.397], std=[0.188, 0.167, 0.162, 0.181]
             ),
         ]
     )
@@ -417,7 +417,7 @@ def train(model, criterion, optimizer, epoch, train_loader, curr_lr):
             )
         # break
 
-
+# TODO
 def validate(model, val_loader):
     """
     在验证集上评估模型的性能

@@ -40,7 +40,7 @@ model.load_state_dict(checkpoint["state_dict"])
 transform = transforms.Compose(
     [
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406, 0.397], std=[0.229, 0.224, 0.225, 0.181]),
+        transforms.Normalize(mean=[0.452, 0.411, 0.362, 0.397], std=[0.188, 0.167, 0.162, 0.181]),
     ]
 )
 
