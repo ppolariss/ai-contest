@@ -72,6 +72,8 @@ def load_data(img_path, tir_img_path, gt_path, train=True):
     # img = cv2.merge((rgb_img[:, :, 0], rgb_img[:, :, 1], rgb_img[:, :, 2],
     #                      tir_img[:, :, 0], tir_img[:, :, 1]))
     # (512, 640, 6) will ValueError: all the input arrays must have same number of dimensions, but the array at index 0 has 3 dimension(s) and the array at index 1 has 4 dimension(s)
+    # if random.random() < 0.5:
+    #     tir_img = 255 - tir_img
     img_np = np.concatenate((rgb_img, np.expand_dims(tir_img, axis=2)), axis=2)
     # print(img_np.shape)
     # print(img_path)
@@ -207,6 +209,7 @@ tir_img_dir = "./dataset/train/tir/"
 gt_dir = "./dataset/train/hdf5s/"
 
 # 预训练模型
+# pre = "model/best/model_best.pth6.403.tar"
 pre = None
 
 # 任务名称
@@ -222,6 +225,7 @@ def main():
     torch.cuda.manual_seed(seed)
 
     # 创建模型实例，并将其移动到GPU上
+    # model = CSRNet_RGBT(True)
     model = CSRNet_RGBT()
     # model = CANNet()
     model = model.cuda()
@@ -283,8 +287,9 @@ def main():
             print("=> loading checkpoint '{}'".format(pre))
             checkpoint = torch.load(pre)
             start_epoch = checkpoint["epoch"]
-            best_prec1 = checkpoint["best_prec1"]
             model.load_state_dict(checkpoint["state_dict"])
+            best_prec1 = 10.0
+            best_prec1 = checkpoint["best_prec1"]
             optimizer.load_state_dict(checkpoint["optimizer"])
             scheduler.load_state_dict(checkpoint["scheduler"])
             print(

@@ -49,6 +49,8 @@ class CSRNet_RGBT(nn.Module):
                     first = False
                     continue
                 self.frontend.state_dict()[key].data[:] = list(mod.state_dict().items())[i][1].data[:]
+        else:
+            self.load_state_dict(torch.load("model/best/model_best.pth6.403.tar")["state_dict"])
 
 
     def forward(self, x):
