@@ -17,6 +17,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from Res50.model.Res50 import Res50
 from ECAN.model import CANNet
 import aiconfig
+from CLIP_EBC import get_model
 
 # from CLIP_EBC import get_model
 
@@ -222,8 +223,26 @@ def main():
     torch.cuda.manual_seed(seed)
 
     # 创建模型实例，并将其移动到GPU上
-    model = CSRNet_RGBT()
-    # model = CANNet()
+    # model = ()
+    # device = "cuda:0"
+    # current_dir = os.path.abspath(os.path.dirname(__file__))
+    # with open(os.path.join(current_dir, "CLIP_EBC/configs", f"reduction_8.json"), "r") as f:
+    #     config = json.load(f)[str(4)]["shb"]
+    # bins = config["bins"]["fine"]
+    # anchor_points = config["anchor_points"]["fine"]["average"]
+    # bins = [(float(b[0]), float(b[1])) for b in bins]
+    # anchor_points = [float(p) for p in anchor_points]
+
+    # model = get_model(backbone="clip_resnet50", input_size=448, reduction=8, bins=bins, anchor_points=anchor_points)
+    # model = model.to(device)
+
+    # for name, param in model.named_parameters():
+    #     print(f"Parameter name: {name}")
+    #     print(f"Parameter shape: {param.shape}")
+    #     print(f"Parameter values: {param.data}")
+    #     print()
+    # return
+    model = Res50()
     model = model.cuda()
 
     # 定义损失函数和优化器
@@ -232,19 +251,19 @@ def main():
     optimizer = torch.optim.SGD(
         model.parameters(), lr, momentum=momentum, weight_decay=decay
     )
-    # optimizer = optim.Adam(model.parameters(), lr=lr)
+    # optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=decay)
 
     # TODO1
     scheduler = ReduceLROnPlateau(
         optimizer,
         mode="min",
-        factor=0.1,
-        patience=5,
+        factor=0.2,
+        patience=10,
         threshold=0.0001,
         threshold_mode="rel",
         cooldown=0,
         min_lr=1e-10,
-        eps=1e-08,
+        eps=1e-8,
         verbose=True,
     )
 
@@ -383,6 +402,11 @@ def train(model, criterion, optimizer, epoch, train_loader, curr_lr):
 
         # 计算模型输出与目标之间的损失
         loss = criterion(output, target)
+        
+        # TODO res50 need
+        # ----------------
+        loss = loss.requires_grad_(True)
+        # ----------------
 
         # 更新损失记录器
         losses.update(loss.item(), img.size(0))
@@ -392,6 +416,15 @@ def train(model, criterion, optimizer, epoch, train_loader, curr_lr):
         # 反向传播计算梯度
         loss.backward()
         # 使用优化器更新模型参数
+        
+        # TODO res50 need
+        # ----------------
+        optimizer_ft = torch.optim.SGD(
+            model.parameters(), lr, momentum=momentum, weight_decay=decay
+        )
+        optimizer = optimizer_ft
+        # ----------------
+        
         optimizer.step()
 
         # 记录批处理所需的时间
