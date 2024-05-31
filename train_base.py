@@ -283,7 +283,25 @@ def main():
 
 def data_augmentation(img, target):
     input_tensor, target_tensor = random_flip(img, target)
-    return split_and_merge(input_tensor, target_tensor)
+    if random.random() > 0.5:
+        input_tensor2, target_tensor2 = split_and_merge(input_tensor, target_tensor)
+    else:
+        input_tensor2, target_tensor2 = split_and_merge(img, target)
+    ran = random.random()
+    if ran > 0.67:
+        input_tensor1, target_tensor1 = downsample_and_combine(img, target)
+    elif ran > 0.33:
+        input_tensor1, target_tensor1 = downsample_and_combine(
+            input_tensor, target_tensor
+        )
+    else:
+        input_tensor1, target_tensor1 = downsample_and_combine(
+            input_tensor2, target_tensor2
+        )
+
+    return torch.cat((input_tensor1, input_tensor2, input_tensor), dim=0), torch.cat(
+        (target_tensor1, target_tensor2, target_tensor), dim=0
+    )
 
 
 def random_flip(input_tensor, target_tensor):
@@ -295,6 +313,31 @@ def random_flip(input_tensor, target_tensor):
             input_tensor[i] = torch.flip(input_tensor[i], dims=[1])
             target_tensor[i] = torch.flip(target_tensor[i], dims=[0])
     return input_tensor, target_tensor
+
+
+def merge(tl, tr, bl, br):
+    return torch.cat((torch.cat((tl, tr), dim=-1), torch.cat((bl, br), dim=-1)), dim=-2)
+
+
+def shuffle_two_arrays(arr1, arr2):
+    """
+    Shuffle two arrays such that the corresponding elements in both arrays maintain their relationship.
+
+    Parameters:
+    arr1 (list): The first array to shuffle.
+    arr2 (list): The second array to shuffle, corresponding to arr1.
+
+    Returns:
+    tuple: A tuple containing the two shuffled arrays.
+    """
+    if len(arr1) != len(arr2):
+        raise ValueError("Both arrays must have the same length")
+
+    combined = list(zip(arr1, arr2))
+    random.shuffle(combined)
+    shuffled_arr1, shuffled_arr2 = zip(*combined)
+
+    return list(shuffled_arr1), list(shuffled_arr2)
 
 
 def split_and_merge(input_tensor, target_tensor):
@@ -310,6 +353,18 @@ def split_and_merge(input_tensor, target_tensor):
     target_bottom_left = target_tensor[:, height // 2 :, : width // 2]
     target_bottom_right = target_tensor[:, height // 2 :, width // 2 :]
 
+    input_top_left, target_top_left = shuffle_two_arrays(
+        input_top_left, target_top_left
+    )
+    input_top_right, target_top_right = shuffle_two_arrays(
+        input_top_right, target_top_right
+    )
+    input_bottom_left, target_bottom_left = shuffle_two_arrays(
+        input_bottom_left, target_bottom_left
+    )
+    input_bottom_right, target_bottom_right = shuffle_two_arrays(
+        input_bottom_right, target_bottom_right
+    )
     new_images = []
     new_targets = []
     for i in range(batch_size):
@@ -317,34 +372,68 @@ def split_and_merge(input_tensor, target_tensor):
         idx2 = (i + 1) % batch_size
         idx3 = (i + 2) % batch_size
         idx4 = (i + 3) % batch_size
-        new_image1_top = torch.cat(
-            (input_top_left[idx1], input_top_right[idx2]), dim=-1
+        new_images.append(
+            merge(
+                input_top_left[idx1],
+                input_top_right[idx2],
+                input_bottom_left[idx3],
+                input_bottom_right[idx4],
+            )
         )
-        new_image1_bottom = torch.cat(
-            (input_bottom_left[idx3], input_bottom_right[idx4]), dim=-1
+        new_targets.append(
+            merge(
+                target_top_left[idx1],
+                target_top_right[idx2],
+                target_bottom_left[idx3],
+                target_bottom_right[idx4],
+            )
         )
-        new_image1 = torch.cat((new_image1_top, new_image1_bottom), dim=-2)
-        # print(new_image1.shape)
-        # print(new_image1)
-
-        new_images.append(new_image1)
-
-        new_target_top = torch.cat(
-            (target_top_left[idx1], target_top_right[idx2]), dim=-1
-        )
-        new_target_bottom = torch.cat(
-            (target_bottom_left[idx3], target_bottom_right[idx4]), dim=-1
-        )
-        new_target = torch.cat((new_target_top, new_target_bottom), dim=-2)
-
-        new_targets.append(new_target)
 
     new_images_tensor = torch.stack(new_images)
     new_targets_tensor = torch.stack(new_targets)
 
-    return torch.cat((input_tensor, new_images_tensor), dim=0), torch.cat(
-        (target_tensor, new_targets_tensor), dim=0
-    )
+    return new_images_tensor, new_targets_tensor
+
+
+def down_sample(tensor):
+    """
+    Downsample the image tensor by a factor of 2.
+    Only keep the top-left pixel of each 2x2 block.
+    """
+    if tensor.dim() == 2:
+        return tensor[::2, ::2]
+    if tensor.dim() == 3:
+        return tensor[:, ::2, ::2]
+    if tensor.dim() == 4:
+        return tensor[:, :, ::2, ::2]
+
+
+def downsample_and_combine(input_tensor, target_tensor):
+    batch_size, channels, height, width = input_tensor.size()
+    if batch_size % 4 != 0:
+        return input_tensor, target_tensor
+
+    # input_top_left, input_top_right, input_bottom_left, input_bottom_right, target_top_left, target_top_right, target_bottom_left, target_bottom_right = split(
+    #     input_tensor, target_tensor
+    # )
+    data = []
+    target = []
+    for i in range(batch_size):
+        data.append(down_sample(input_tensor[i]))
+        target.append(down_sample(target_tensor[i]))
+    # wash card
+    data, target = shuffle_two_arrays(data, target)
+
+    new_images = []
+    new_targets = []
+
+    for i in range(batch_size // 4):
+        tl, tr, bl, br = data[i], data[i + 1], data[i + 2], data[i + 3]
+        new_images.append(merge(tl, tr, bl, br))
+        tl, tr, bl, br = target[i], target[i + 1], target[i + 2], target[i + 3]
+        new_targets.append(merge(tl, tr, bl, br))
+
+    return torch.stack(new_images), torch.stack(new_targets)
 
 
 def train(model, criterion, optimizer, epoch, train_loader, curr_lr):

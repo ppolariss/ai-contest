@@ -1,20 +1,14 @@
-import json
-import os
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
 from torchvision import transforms
-import time
-import random
-import numpy as np
 from torch.utils.data import Dataset, DataLoader, random_split
-from PIL import Image
-
+from model import CSRNet
 from CSRNet_RGBT.csrnet_rgbt import CSRNet_RGBT
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from Res50.model.Res50 import Res50
 from ECAN.model import CANNet
-from train import ImgDataset
+from train_origin import ImgDataset
 import aiconfig
 from CLIP_EBC import get_model
 
@@ -26,10 +20,12 @@ from CLIP_EBC import get_model
 # gt_paths = [f"{gt_path}{i}.h5" for i in range(1, 1001)]
 
 img_dir = "./dataset/train/rgb/"
-tir_img_dir = "./dataset/train/tir/"
+# tir_img_dir = "./dataset/train/tir/"
 gt_dir = "./dataset/train/hdf5s/"
 
-model = CSRNet_RGBT()
+# model = CSRNet_RGBT()
+model = CSRNet()
+model = model.cuda()
 # model = CANNet()
 # device = "cuda:0"
 # current_dir = os.path.abspath(os.path.dirname(__file__))
@@ -54,7 +50,7 @@ model.load_state_dict(checkpoint["state_dict"])
 transform = transforms.Compose(
     [
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.452, 0.411, 0.362, 0.397], std=[0.188, 0.167, 0.162, 0.181]),
+        transforms.Normalize(mean=[0.452, 0.411, 0.362], std=[0.188, 0.167, 0.162]),
     ]
 )
 
@@ -62,7 +58,7 @@ transform = transforms.Compose(
 batch_size = aiconfig.batch_size
 
 dataset = ImgDataset(
-        img_dir, tir_img_dir, gt_dir, shuffle=True, transform=transform, train=True
+        img_dir, gt_dir, shuffle=True, transform=transform, train=True
     )
 
 val_loader = DataLoader(
@@ -77,7 +73,7 @@ def validate(model, val_loader):
     print("begin test")
 
     # 将模型设置为评估模式
-    #model.eval()
+    model.eval()
     # 初始化 MAE（Mean Absolute Error）
     mae = 0
 
