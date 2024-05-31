@@ -73,6 +73,8 @@ def load_data(img_path, tir_img_path, gt_path, train=True):
     # img = cv2.merge((rgb_img[:, :, 0], rgb_img[:, :, 1], rgb_img[:, :, 2],
     #                      tir_img[:, :, 0], tir_img[:, :, 1]))
     # (512, 640, 6) will ValueError: all the input arrays must have same number of dimensions, but the array at index 0 has 3 dimension(s) and the array at index 1 has 4 dimension(s)
+    # if random.random() < 0.5:
+    #     tir_img = 255 - tir_img
     img_np = np.concatenate((rgb_img, np.expand_dims(tir_img, axis=2)), axis=2)
     # print(img_np.shape)
     # print(img_path)
@@ -208,6 +210,7 @@ tir_img_dir = "./dataset/train/tir/"
 gt_dir = "./dataset/train/hdf5s/"
 
 # 预训练模型
+# pre = "model/best/model_best.pth6.403.tar"
 pre = None
 
 # 任务名称
@@ -223,26 +226,9 @@ def main():
     torch.cuda.manual_seed(seed)
 
     # 创建模型实例，并将其移动到GPU上
-    # model = ()
-    # device = "cuda:0"
-    # current_dir = os.path.abspath(os.path.dirname(__file__))
-    # with open(os.path.join(current_dir, "CLIP_EBC/configs", f"reduction_8.json"), "r") as f:
-    #     config = json.load(f)[str(4)]["shb"]
-    # bins = config["bins"]["fine"]
-    # anchor_points = config["anchor_points"]["fine"]["average"]
-    # bins = [(float(b[0]), float(b[1])) for b in bins]
-    # anchor_points = [float(p) for p in anchor_points]
-
-    # model = get_model(backbone="clip_resnet50", input_size=448, reduction=8, bins=bins, anchor_points=anchor_points)
-    # model = model.to(device)
-
-    # for name, param in model.named_parameters():
-    #     print(f"Parameter name: {name}")
-    #     print(f"Parameter shape: {param.shape}")
-    #     print(f"Parameter values: {param.data}")
-    #     print()
-    # return
-    model = Res50()
+    # model = CSRNet_RGBT(True)
+    model = CSRNet_RGBT()
+    # model = CANNet()
     model = model.cuda()
 
     # 定义损失函数和优化器
@@ -302,8 +288,9 @@ def main():
             print("=> loading checkpoint '{}'".format(pre))
             checkpoint = torch.load(pre)
             start_epoch = checkpoint["epoch"]
-            best_prec1 = checkpoint["best_prec1"]
             model.load_state_dict(checkpoint["state_dict"])
+            best_prec1 = 10.0
+            best_prec1 = checkpoint["best_prec1"]
             optimizer.load_state_dict(checkpoint["optimizer"])
             scheduler.load_state_dict(checkpoint["scheduler"])
             print(
